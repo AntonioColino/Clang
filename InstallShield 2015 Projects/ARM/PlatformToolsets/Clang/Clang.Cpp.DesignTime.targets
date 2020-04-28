@@ -1,0 +1,671 @@
+<!--
+***********************************************************************************************
+Jcc.Cpp.DesignTime.targets
+
+WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and have
+          created a backup copy.  Incorrect changes to this file will make it
+          impossible to load or build your projects from the command-line or the IDE.
+
+This file contains targets that are only used by IDE and not the real build
+***********************************************************************************************
+-->
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" TreatAsLocalProperty="OutDir">
+	<!-- Fix up for old Smart Devices projects-->
+	<PropertyGroup Condition="'$(_UIModelDllPath)' == '' and '$(SmartDeviceProject)' != ''">
+		<_UIModelDllPath>$(VCIDEInstallDir)\VCPackages\CE.dll</_UIModelDllPath>
+		<!-- <Keyword>Linux</Keyword> -->
+	</PropertyGroup>
+
+	<!--The CppWinRTEnabled project property was originally used by the C++/WinRT VSIX to explicitly opt into 
+    C++/WinRT project build support.  As of Visual Studio 2019, this is no longer supported.  Projects must
+    instead add a Microsoft.Windows.CppWinRT package reference. -->
+	<PropertyGroup>
+		<CppWinRTEnabled Condition="'$(CppWinRTEnabled)' != 'true'">false</CppWinRTEnabled>
+		<CppWinRTLegacyEnabled Condition="$(CppWinRTEnabled) and ('$(CppWinRTPackage)' != 'true')">true</CppWinRTLegacyEnabled>
+		<CppWinRTLegacyEnabled Condition="'$(CppWinRTLegacyEnabled)' != 'true'">false</CppWinRTLegacyEnabled>
+	</PropertyGroup>
+
+	<Target Name="CppWinRTCheckPackageReference">
+		<Error Condition="$(CppWinRTLegacyEnabled)" Text="The C++/WinRT VSIX no longer provides project build support.  Please add a project reference to the Microsoft.Windows.CppWinRT Nuget package."/>
+	</Target>
+
+	<!-- Linux doesn't support pdbs.-->
+	<Target Name="CreateFullDebugSymbols" />
+
+
+	<PropertyGroup Condition ="'$(DesignTimeBuild)' == 'true'">
+		<!-- This will make GetTargetPathWithTargetPlatformMoniker during ResolveProjectReferences -->
+		<IntelliSenseBuild>true</IntelliSenseBuild>
+		<!-- Disable warning targets, they are not useful in designtime build -->
+		<IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+		<_FindDependencies>true</_FindDependencies>
+		<BuildingProject>false</BuildingProject>
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Default'"/>
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Windows'">--target=arm-pc-windows-msvc</ClangTarget>
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Clang.Windows'">--target=arm-pc-windows-gnueabihf</ClangTarget>
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">--target=arm-windows-gcc</ClangTarget>
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Linux'">--target=arm-linux-gnueabihf</ClangTarget>
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'iOS'">--target=arm-macho-gnueabihf</ClangTarget>
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Android'">--target=arm-android-gnueabihf</ClangTarget>
+		<ClangToolExe>clang.exe</ClangToolExe>
+		<MSVCErrorReport>true</MSVCErrorReport>
+		<ToolsetISenseIdentifier Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">Linux</ToolsetISenseIdentifier>
+		<ToolsetISenseIdentifier Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'">$(ToolsetISenseIdentifierType)</ToolsetISenseIdentifier>
+		<ResolveReferencesDesignTime>true</ResolveReferencesDesignTime>
+		<BuildingInIde>true</BuildingInIde>
+		<LanguageStandard>Default</LanguageStandard>
+		<ConformanceMode>false</ConformanceMode>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<!-- We want to make sure we run these targets identically for all designtime build to ensure consistent results when they are bundled -->
+		<DesignTimeBuildInitTargets>$(DetermineProjectTypeTargets);InitGetClCommandLines;ResolveReferences;FixupReferences;_FixupClangIntelliSense</DesignTimeBuildInitTargets>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<AddManagedCapability Condition="'$(AddManagedCapability)' == '' and '$(ManagedAssembly)' == 'true'">true</AddManagedCapability>
+		<AddManagedCapability Condition="'$(AddManagedCapability)' == '' and '$(TargetRuntime)' != 'Native' and '$(CLRSupport)' != '' and '$(CLRSupport)' != 'false'">true</AddManagedCapability>
+	</PropertyGroup>
+
+	<!-- Capabilities for all vc projects. -->
+	<ItemGroup>
+		<ProjectCapability Include="AssemblyReferences;COMReferences;ProjectReferences;WinRTReferences;SDKReferences;SharedProjectReferences" Condition="'$(IncludeVCDefaultReferenceCapabilities)' != 'false'"/>
+		<ProjectCapability Include="OutputGroups;AllTargetOutputGroups;VisualStudioWellKnownOutputGroups" Condition="'$(IncludeVCDefaultOutputGroupsCapabilities)' != 'false'"/>
+		<ProjectCapability Include="ProjectConfigurationsDeclaredAsItems" />
+		<ProjectCapability Include="PropertyManager" Condition="'$(PropertyManagerSupported)' != 'false'"/>
+		<ProjectCapability Include="managed" Condition="'$(AddManagedCapability)' == 'true'"/>
+		<ProjectCapability Include="native" Condition="'$(AddManagedCapability)' != 'true'"/>
+		<!-- enables local windows debugger check if the exe is a console application -->
+		<ProjectCapability Include="IntegratedConsoleDebugging" />
+		<ProjectCapability Include="LinuxNative" />
+		<ProjectCapability Include="LinuxCrossNative" />
+		<!-- enables Android console application 
+    <ProjectCapability Include="Android" />
+    <ProjectCapability Include="AndroidNative" />-->
+		<!-- enables iOS console application -->
+		<ProjectCapability Condition="'$(DesignTimeBuild)' == 'true' AND '$(ToolsetISenseIdentifierType)' == 'iOS'" Include="iOS"/>
+		<ProjectCapability Condition="'$(DesignTimeBuild)' == 'true' AND '$(ToolsetISenseIdentifierType)' == 'iOS'" Include="iOSNative"/>
+		<ProjectCapability Condition="'$(DesignTimeBuild)' == 'true' AND '$(ToolsetISenseIdentifierType)' == 'iOS'" Include="iOSFrameworkReferences" />
+	</ItemGroup>
+
+	<!-- Additional metadata needed in resolved project references -->
+	<ItemDefinitionGroup>
+		<TargetPathWithTargetPlatformMoniker>
+			<ProjectGuid Condition ="'%(TargetPathWithTargetPlatformMoniker.ProjectGuid)' == ''">$(ProjectGuid)</ProjectGuid>
+			<ReferenceSourceTarget Condition ="'%(TargetPathWithTargetPlatformMoniker.ReferenceSourceTarget)' == ''">ProjectReference</ReferenceSourceTarget>
+			<MsbuildSourceProjectFile Condition ="'%(TargetPathWithTargetPlatformMoniker.MsbuildSourceProjectFile)' == ''">$(MSBuildProjectFullPath)</MsbuildSourceProjectFile>
+		</TargetPathWithTargetPlatformMoniker>
+	</ItemDefinitionGroup>
+
+	<Target Name="InitGetClCommandLines">
+		<!-- Add a fake cpp file to get Configuration options. It needs to be done before other targets running to ensure correct results -->
+		<ItemGroup>
+			<ClCompile Include="__temporary.cpp">
+				<LanguageStandard Condition="'%(ClCompile.LanguageStandard)' != 'Default'">Default</LanguageStandard>
+				<ConformanceMode Condition="'%(ClCompile.ConformanceMode)' != 'false'">false</ConformanceMode>
+				<ConfigurationOptions>true</ConfigurationOptions>
+
+
+				<PreprocessorDefinitions Condition="'$(DesignTimeBuild)' == 'true' AND '$(UseDebugLibraries)' != 'true' AND ('$(ToolsetISenseIdentifierType)' == 'Windows')">DEBUG=0;_DEBUG=0;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(DesignTimeBuild)' == 'true' AND '$(UseDebugLibraries)' != 'true' AND ( '$(ToolsetISenseIdentifierType)' == 'GCC' OR '$(ToolsetISenseIdentifierType)'== 'Linux' OR '$(ToolsetISenseIdentifierType)' == 'iOS' OR '$(ToolsetISenseIdentifierType)' == 'Android' OR '$(ToolsetISenseIdentifierType)' == 'Clang.Windows')">DEBUG=0;_DEBUG=0;__clang_version__=$(ClangVersion);__clang_major__=$(ClangMajor);__clang_minor__=$(ClangMinor);__clang_patchlevel__=$(ClangPatchLevel);__clang__=1;__llvm__=1;__ARM__=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(DesignTimeBuild)' == 'true' AND '$(UseDebugLibraries)' == 'true' AND ('$(ToolsetISenseIdentifierType)' == 'Windows')">DEBUG=1;_DEBUG=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(DesignTimeBuild)' == 'true' AND '$(UseDebugLibraries)' == 'true' AND ( '$(ToolsetISenseIdentifierType)' == 'GCC' OR '$(ToolsetISenseIdentifierType)'== 'Linux' OR '$(ToolsetISenseIdentifierType)' == 'iOS' OR '$(ToolsetISenseIdentifierType)' == 'Android' OR '$(ToolsetISenseIdentifierType)' == 'Clang.Windows')">DEBUG=1;_DEBUG=1;__clang_version__=$(ClangVersion);__clang_major__=$(ClangMajor);__clang_minor__=$(ClangMinor);__clang_patchlevel__=$(ClangPatchLevel);__clang__=1;__llvm__=1;__ARM__=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions> 
+
+
+				<PreprocessorDefinitions Condition="'$(DesignTimeBuild)' == 'true' AND '$(UseDebugLibraries)' != 'true' AND ('$(ToolsetISenseIdentifierType)' == 'Windows')">DEBUG=0;_DEBUG=0;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(DesignTimeBuild)' == 'true' AND '$(UseDebugLibraries)' != 'true' AND ( '$(ToolsetISenseIdentifierType)' == 'GCC' OR '$(ToolsetISenseIdentifierType)'== 'Linux' OR '$(ToolsetISenseIdentifierType)' == 'iOS' OR '$(ToolsetISenseIdentifierType)' == 'Android' OR '$(ToolsetISenseIdentifierType)' == 'Clang.Windows')">DEBUG=0;_DEBUG=0;__clang_version__=$(ClangVersion);__clang_major__=$(ClangMajor);__clang_minor__=$(ClangMinor);__clang_patchlevel__=$(ClangPatchLevel);__clang__=1;__llvm__=1;__ARM__=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(DesignTimeBuild)' == 'true' AND '$(UseDebugLibraries)' == 'true' AND ('$(ToolsetISenseIdentifierType)' == 'Windows')">DEBUG=1;_DEBUG=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(DesignTimeBuild)' == 'true' AND '$(UseDebugLibraries)' == 'true' AND ( '$(ToolsetISenseIdentifierType)' == 'GCC' OR '$(ToolsetISenseIdentifierType)'== 'Linux' OR '$(ToolsetISenseIdentifierType)' == 'iOS' OR '$(ToolsetISenseIdentifierType)' == 'Android' OR '$(ToolsetISenseIdentifierType)' == 'Clang.Windows')">DEBUG=1;_DEBUG=1;__clang_version__=$(ClangVersion);__clang_major__=$(ClangMajor);__clang_minor__=$(ClangMinor);__clang_patchlevel__=$(ClangPatchLevel);__clang__=1;__llvm__=1;__ARM__=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions> 
+				<UndefinePreprocessorDefinitions Condition="'$(DesignTimeBuild)' == 'true' AND  '$(ToolsetISenseIdentifierType)' == 'GCC'">__linux__;__unix__</UndefinePreprocessorDefinitions>
+			</ClCompile>
+		</ItemGroup>
+
+		<PropertyGroup>
+			<!-- Disable ref resolution if we know we won't get anything useful from it. Set ResolveReferencesDesignTime to true to override this behavior -->
+			<ResolveReferencesDependsOn Condition="'$(WinMDAssembly)' != 'true' and '$(ManagedAssembly)' != 'true' and '$(AlwaysResolveReferencesDesignTime)' != 'true'"/>
+		</PropertyGroup>
+	</Target>
+
+
+	<Target Name="FixupReferences">
+		<ItemGroup>
+			<ReferencePath>
+				<!-- when winmd file does not exist yet <WinMdFile> metadata is not set by RAR. Add it here so it is still included in IntelliSense command line -->
+				<WinMDFile Condition="'%(ReferencePath.WinMDFile)' == '' and '%(ReferencePath.Extension)' == '.winmd'">true</WinMDFile>
+			</ReferencePath>
+		</ItemGroup>
+	</Target>
+
+
+	<Target Name="_FixupClangIntelliSense" BeforeTargets="GetClCommandLines">
+		<ItemGroup>
+			<ClCompile>
+				<ISenseIncludeDirectories>$(IncludePath)</ISenseIncludeDirectories>
+			</ClCompile>
+			<ClCompile>
+				<AdditionalIncludeDirectories>$(IncludePath);%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+			</ClCompile>
+			<ClCompile>
+				<IntelliSenseBuild>true</IntelliSenseBuild>
+				<ISenseIncludeDirectories>$(IncludePath)</ISenseIncludeDirectories>
+				<AdditionalIncludeDirectories>$(IncludePath);%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+				<LanguageStandard Condition="'%(ClCompile.LanguageStandard)' != 'Default'">Default</LanguageStandard>
+				<ConformanceMode Condition="'%(ClCompile.ConformanceMode)' != 'false'">false</ConformanceMode>
+				<ClangMode>true</ClangMode>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' != 'true' AND ('$(ToolsetISenseIdentifierType)' == 'Windows')">DEBUG=0;_DEBUG=0;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' != 'true' AND ( '$(ToolsetISenseIdentifierType)' == 'GCC' OR '$(ToolsetISenseIdentifierType)'== 'Linux' OR '$(ToolsetISenseIdentifierType)' == 'iOS' OR '$(ToolsetISenseIdentifierType)' == 'Android' OR '$(ToolsetISenseIdentifierType)' == 'Clang.Windows')">DEBUG=0;_DEBUG=0;__clang_version__=$(ClangVersion);__clang_major__=$(ClangMajor);__clang_minor__=$(ClangMinor);__clang_patchlevel__=$(ClangPatchLevel);__clang__=1;__llvm__=1;__ARM__=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' == 'true' AND ('$(ToolsetISenseIdentifierType)' == 'Windows')">DEBUG=1;_DEBUG=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' == 'true' AND ( '$(ToolsetISenseIdentifierType)' == 'GCC' OR '$(ToolsetISenseIdentifierType)'== 'Linux' OR '$(ToolsetISenseIdentifierType)' == 'iOS' OR '$(ToolsetISenseIdentifierType)' == 'Android' OR '$(ToolsetISenseIdentifierType)' == 'Clang.Windows')">DEBUG=1;_DEBUG=1;__clang_version__=$(ClangVersion);__clang_major__=$(ClangMajor);__clang_minor__=$(ClangMinor);__clang_patchlevel__=$(ClangPatchLevel);__clang__=1;__llvm__=1;__ARM__=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions> 
+				<UndefinePreprocessorDefinitions Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">__linux__;__unix__</UndefinePreprocessorDefinitions>
+				<UseMultiToolTask>false</UseMultiToolTask>
+			</ClCompile>
+			<ClangCompile>
+				<IntelliSenseBuild>true</IntelliSenseBuild>
+				<ISenseIncludeDirectories>$(IncludePath)</ISenseIncludeDirectories>
+				<AdditionalIncludeDirectories>$(IncludePath);%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' != 'true' AND ('$(ToolsetISenseIdentifierType)' == 'Windows')">DEBUG=0;_DEBUG=0;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' != 'true' AND ( '$(ToolsetISenseIdentifierType)' == 'GCC' OR '$(ToolsetISenseIdentifierType)'== 'Linux' OR '$(ToolsetISenseIdentifierType)' == 'iOS' OR '$(ToolsetISenseIdentifierType)' == 'Android' OR '$(ToolsetISenseIdentifierType)' == 'Clang.Windows')">DEBUG=0;_DEBUG=0;__clang_version__=$(ClangVersion);__clang_major__=$(ClangMajor);__clang_minor__=$(ClangMinor);__clang_patchlevel__=$(ClangPatchLevel);__clang__=1;__llvm__=1;__ARM__=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' == 'true' AND ('$(ToolsetISenseIdentifierType)' == 'Windows')">DEBUG=1;_DEBUG=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' == 'true' AND ( '$(ToolsetISenseIdentifierType)' == 'GCC' OR '$(ToolsetISenseIdentifierType)'== 'Linux' OR '$(ToolsetISenseIdentifierType)' == 'iOS' OR '$(ToolsetISenseIdentifierType)' == 'Android' OR '$(ToolsetISenseIdentifierType)' == 'Clang.Windows')">DEBUG=1;_DEBUG=1;__clang_version__=$(ClangVersion);__clang_major__=$(ClangMajor);__clang_minor__=$(ClangMinor);__clang_patchlevel__=$(ClangPatchLevel);__clang__=1;__llvm__=1;__ARM__=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions> 
+				<UndefinePreprocessorDefinitions Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">__linux__;__unix__</UndefinePreprocessorDefinitions>
+				<UseMultiToolTask>false</UseMultiToolTask>
+				<GNUMode>true</GNUMode>
+				<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Default'"/>
+				<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Windows'">--target=arm-pc-windows-msvc</ClangTarget>
+				<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Clang.Windows'">--target=arm-pc-windows-gnueabihf</ClangTarget>
+				<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">--target=arm-windows-gcc</ClangTarget>
+				<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Linux'">--target=arm-linux-gnueabihf</ClangTarget>
+				<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'iOS'">--target=arm-macho-gnueabihf</ClangTarget>
+				<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Android'">--target=arm-android-gnueabihf</ClangTarget>
+			</ClangCompile>
+		</ItemGroup>
+	</Target>
+
+	<UsingTask TaskName="CLCommandLine" AssemblyFile="$(CurrentVCTargetsPath)\Microsoft.Build.CPPTasks.Common.dll"/>
+	<Target Name="GetClCommandLines"
+          Returns="@(ClCommandLines)"
+          DependsOnTargets="$(DesignTimeBuildInitTargets);$(ComputeCompileInputsTargets)" >
+
+		<ItemGroup>
+			<ClCompile>
+				<!-- figure out obj file directory which IntelliSense needs for #import support, but we don't want to use '%(ClCompile.ObjectFileName)' as it breaks MsBuild batching -->
+				<ObjectFileDirectory Condition="'%(ClCompile.ObjectFileName)' != ''">$([System.IO.Path]::GetDirectoryName('%(ClCompile.ObjectFileName))'))\</ObjectFileDirectory>
+
+				<!-- Option to include files that are excluded from build for IntelliSense. -->
+				<ExcludedFromBuild Condition="'$(IgnoreExcludedFromBuild)' == 'true'" />
+				<ISenseIncludeDirectories>$(IncludePath)</ISenseIncludeDirectories>
+			</ClCompile>
+		</ItemGroup>
+
+		<MakeClCommandLine Condition="'%(ClCompile.ExcludedFromBuild)' != 'true'"
+      ProjectDir="$(ProjectDir)"
+      RemoteProjectDir="$(ProjectDir)"
+      IntermediateDir="$(IntDir)"
+	  MSCompatibility="true"
+	  MSExtensions="true"
+      FullPath="@(ClCompile->'%(Fullpath)')"
+	  ClangMode="true"
+      AdditionalIncludeDirectories="%(ClCompile.AdditionalIncludeDirectories);$(IncludePath)"
+      DebugInformationFormat="%(ClCompile.DebugInformationFormat)"
+      ObjectFileName="%(ClCompile.ObjectFileName)"
+      WarningLevel="%(ClCompile.WarningLevel)"
+      TreatWarningAsError="%(ClCompile.TreatWarningAsError)"
+      AdditionalWarning="%(ClCompile.CAdditionalWarning);%(ClCompile.CppAdditionalWarning)"
+      Verbose="%(ClCompile.Verbose)"
+      Optimization="%(ClCompile.Optimization)"
+      StrictAliasing="%(ClCompile.StrictAliasing)"
+      UnrollLoops="%(ClCompile.UnrollLoops)"
+      LinkTimeOptimization="%(ClCompile.LinkTimeOptimization)"
+      OmitFramePointers="%(ClCompile.OmitFramePointers)"
+      NoCommonBlocks="%(ClCompile.NoCommonBlocks)"
+      PreprocessorDefinitions="__JCC__=8%(ClCompile.PreprocessorDefinitions)"
+      UndefinePreprocessorDefinitions="%(ClCompile.UndefinePreprocessorDefinitions)"
+      UndefineAllPreprocessorDefinitions="%(ClCompile.UndefineAllPreprocessorDefinitions)"
+      ShowIncludes="%(ClCompile.ShowIncludes)"
+      PositionIndependentCode="%(ClCompile.PositionIndependentCode)"
+      ThreadSafeStatics="%(ClCompile.ThreadSafeStatics)"
+      RelaxIEEE="%(ClCompile.RelaxIEEE)"
+      HideInlineMethods="%(ClCompile.HideInlineMethods)"
+      SymbolsHiddenByDefault="%(ClCompile.SymbolsHiddenByDefault)"
+      ExceptionHandling="%(ClCompile.ExceptionHandling)"
+      RuntimeTypeInfo="%(ClCompile.RuntimeTypeInfo)"
+      CLanguageStandard="%(ClCompile.CLanguageStandard)"
+      CppLanguageStandard="%(ClCompile.CppLanguageStandard)"
+      CompileAs="%(ClCompile.CompileAs)"
+      ForcedIncludeFiles="%(ClCompile.ForcedIncludeFiles)"
+      AdditionalOptions="%(ClCompile.AdditionalOptions)"
+      EnableASAN="$(ClCompile.EnableASAN)"
+      RemoteToolExe="%(ClCompile.RemoteCompileToolExe)"
+      ImportedProjects="$(MSBuildAllProjects)">
+			<Output TaskParameter="RemoteClCompile" ItemName="RemoteClCompile"/>
+		</MakeClCommandLine>
+
+		<CLCommandLine
+			UseFullPaths					   ="true"
+            Condition                          ="'%(ClCompile.ExcludedFromBuild)' != 'true'"
+            BuildingInIDE                      ="true"
+            Sources                            ="@(ClCompile)"
+
+            ClangMode                          ="%(ClCompile.ClangMode)"
+            GNUMode="%(ClCompile.GNUMode)"
+            ClangVersion="%(ClCompile.ClangVersion)"
+            MSVCErrorReport="%(ClCompile.MSVCErrorReport)"
+            FloatABI="%(ClCompile.FloatABI)"
+            GccToolChain="%(ClCompile.GccToolChain)"
+            Sysroot="%(ClCompile.Sysroot)"
+            TargetArch="$(ClangTarget)"
+            EnableExecuteTool="$(ClangEnableExecuteTool)"
+            MSCompatibilityVersion="%(ClCompile.MSCompatibilityVersion)"
+            MSCompilerVersion="%(ClCompile.MSCompilerVersion)"
+
+            AdditionalIncludeDirectories       ="%(ClCompile.AdditionalIncludeDirectories)"
+            AdditionalOptions                  ="%(ClCompile.AdditionalOptions)"
+            AdditionalUsingDirectories         ="%(ClCompile.AdditionalUsingDirectories)"
+            CallingConvention                  ="%(ClCompile.CallingConvention)"
+            CompileAsManaged                   ="%(ClCompile.CompileAsManaged)"
+            CompileAsWinRT                     ="%(ClCompile.CompileAsWinRT)"
+            CompileAs                          ="%(ClCompile.CompileAs)"
+            ConformanceMode                    ="%(ClCompile.ConformanceMode)"
+            DisableLanguageExtensions          ="%(ClCompile.DisableLanguageExtensions)"
+            DisableSpecificWarnings            ="%(ClCompile.DisableSpecificWarnings)"
+            EnableEnhancedInstructionSet       ="%(ClCompile.EnableEnhancedInstructionSet)"
+            EnableModules                      ="%(ClCompile.EnableModules)"
+            ErrorReporting                     ="%(ClCompile.ErrorReporting)"
+            ExceptionHandling                  ="%(ClCompile.ExceptionHandling)"
+            ExcludedInputPaths                 ="$(ExcludePath)"
+            ExpandAttributedSource             ="%(ClCompile.ExpandAttributedSource)"
+            FloatingPointExceptions            ="%(ClCompile.FloatingPointExceptions)"
+            FloatingPointModel                 ="%(ClCompile.FloatingPointModel)"
+            ForceConformanceInForLoopScope     ="%(ClCompile.ForceConformanceInForLoopScope)"
+            ForcedIncludeFiles                 ="%(ClCompile.ForcedIncludeFiles)"
+            ForcedUsingFiles                   ="%(ClCompile.ForcedUsingFiles)"
+            IgnoreStandardIncludePath          ="%(ClCompile.IgnoreStandardIncludePath)"
+            InlineFunctionExpansion            ="%(ClCompile.InlineFunctionExpansion)"
+            IntrinsicFunctions                 ="%(ClCompile.IntrinsicFunctions)"
+            LanguageStandard                   ="%(ClCompile.LanguageStandard)"
+            CLanguageStandard                  ="%(ClCompile.CLanguageStandard)"
+            CppLanguageStandard                ="%(ClCompile.CppLanguageStandard)"
+            OpenMPSupport                      ="%(ClCompile.OpenMPSupport)"
+            ObjectFileName                     ="%(ClCompile.ObjectFileDirectory)"
+            PrecompiledHeader                  ="%(ClCompile.PrecompiledHeader)"
+            PrecompiledHeaderFile              ="%(ClCompile.PrecompiledHeaderFile)"
+            PrecompiledHeaderOutputFile        ="%(ClCompile.PrecompiledHeaderOutputFile)"
+            PreprocessKeepComments             ="%(ClCompile.PreprocessKeepComments)"
+			PreprocessorDefinitions			   ="__JCC__=7%(ClCompile.PreprocessorDefinitions)"
+            PreprocessSuppressLineNumbers      ="%(ClCompile.PreprocessSuppressLineNumbers)"
+            PreprocessToFile                   ="%(ClCompile.PreprocessToFile)"
+            ProcessorNumber                    ="%(ClCompile.ProcessorNumber)"
+            RuntimeLibrary                     ="%(ClCompile.RuntimeLibrary)"
+            SmallerTypeCheck                   ="%(ClCompile.SmallerTypeCheck)"
+            StructMemberAlignment              ="%(ClCompile.StructMemberAlignment)"
+            TreatSpecificWarningsAsErrors      ="%(ClCompile.TreatSpecificWarningsAsErrors)"
+            TreatWarningAsError                ="%(ClCompile.TreatWarningAsError)"
+            TreatWChar_tAsBuiltInType          ="%(ClCompile.TreatWChar_tAsBuiltInType)"
+            UndefineAllPreprocessorDefinitions ="%(ClCompile.UndefineAllPreprocessorDefinitions)"
+            UndefinePreprocessorDefinitions    ="%(ClCompile.UndefinePreprocessorDefinitions)"
+            WarningLevel                       ="%(ClCompile.WarningLevel)"
+            WinRTNoStdLib                      ="%(ClCompile.WinRTNoStdLib)"
+
+            UseShortEnums                      ="%(ClCompile.UseShortEnums)"
+            MSExtensions                       ="%(ClCompile.MSExtensions)"
+            MSCompatibility                    ="%(ClCompile.MSCompatibility)"
+
+            TrackerLogDirectory                ="%(ClCompile.TrackerLogDirectory)"
+
+            TLogReadFiles                      ="@(CLTLogReadFiles)"
+            TLogWriteFiles                     ="@(CLTLogWriteFiles)"
+            ToolExe                            ="$(CLToolExe)"
+            ToolPath                           ="$(CLToolPath)"
+            ToolArchitecture                   ="$(CLToolArchitecture)"
+            TrackerFrameworkPath               ="$(CLTrackerFrameworkPath)"
+            TrackerSdkPath                     ="$(CLTrackerSdkPath)"
+    >
+			<Output TaskParameter="CommandLines" ItemName="ClCommandLines"/>
+		</CLCommandLine>
+
+		<CLCommandLine Condition="'@(FxCompile)' != ''"
+            BuildingInIDE                      ="$(BuildingInsideVisualStudio)"
+            Sources                            ="@(FxCompile)"
+
+            AdditionalIncludeDirectories       ="%(FxCompile.AdditionalIncludeDirectories)"
+            PreprocessorDefinitions            ="%(FxCompile.PreprocessorDefinitions)"
+    >
+			<Output TaskParameter="CommandLines" ItemName="ClCommandLines"/>
+		</CLCommandLine>
+
+	</Target>
+
+	<Target Name="GetProjectDirectories"
+          Returns="@(_ProjectDirectories)"
+          DependsOnTargets="$(DetermineProjectTypeTargets)">
+
+		<PropertyGroup Condition="'$(UseEnv)' == 'true'">
+			<IncludePath>$(INCLUDE)</IncludePath>
+			<LibraryPath>$(LIB)</LibraryPath>
+			<ReferencePath>$(LIBPATH)</ReferencePath>
+		</PropertyGroup>
+
+		<ItemGroup>
+			<_ProjectDirectories Include="dummy">
+				<IncludePath>$(IncludePath)</IncludePath>
+				<ISenseIncludeDirectories>$(IncludePath)</ISenseIncludeDirectories>
+				<AdditionalIncludeDirectories>$(IncludePath);%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+				<FrameworkIncludePath>$(FrameworkIncludePath)</FrameworkIncludePath>
+				<ExcludePath>$(ExcludePath)</ExcludePath>
+				<ReferencePath>$(ReferencePath);$(LibraryPath)</ReferencePath>
+				<ProjectDir>$(ProjectDir)</ProjectDir>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' != 'true' AND ('$(ToolsetISenseIdentifierType)' == 'Windows')">DEBUG=0;_DEBUG=0;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' != 'true' AND ( '$(ToolsetISenseIdentifierType)' == 'GCC' OR '$(ToolsetISenseIdentifierType)'== 'Linux' OR '$(ToolsetISenseIdentifierType)' == 'iOS' OR '$(ToolsetISenseIdentifierType)' == 'Android' OR '$(ToolsetISenseIdentifierType)' == 'Clang.Windows')">DEBUG=0;_DEBUG=0;__clang_version__=$(ClangVersion);__clang_major__=$(ClangMajor);__clang_minor__=$(ClangMinor);__clang_patchlevel__=$(ClangPatchLevel);__clang__=1;__llvm__=1;__ARM__=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' == 'true' AND ('$(ToolsetISenseIdentifierType)' == 'Windows')">DEBUG=1;_DEBUG=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' == 'true' AND ( '$(ToolsetISenseIdentifierType)' == 'GCC' OR '$(ToolsetISenseIdentifierType)'== 'Linux' OR '$(ToolsetISenseIdentifierType)' == 'iOS' OR '$(ToolsetISenseIdentifierType)' == 'Android' OR '$(ToolsetISenseIdentifierType)' == 'Clang.Windows')">DEBUG=1;_DEBUG=1;__clang_version__=$(ClangVersion);__clang_major__=$(ClangMajor);__clang_minor__=$(ClangMinor);__clang_patchlevel__=$(ClangPatchLevel);__clang__=1;__llvm__=1;__ARM__=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions> 
+				<UndefinePreprocessorDefinitions Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">__linux__;__unix__</UndefinePreprocessorDefinitions>
+				<ToolsetISenseIdentifier Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">Linux</ToolsetISenseIdentifier>
+				<ToolsetISenseIdentifier Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'">$(ToolsetISenseIdentifierType)</ToolsetISenseIdentifier>
+			</_ProjectDirectories>
+		</ItemGroup>
+	</Target>
+
+	<Target Name="GetGeneratedFiles"
+          Returns="@(_GeneratedFiles)"
+          DependsOnTargets="$(DesignTimeBuildInitTargets);$(GeneratedFilesOutputGroupDependsOn)" >
+
+		<ItemGroup>
+			<_GeneratedFiles Include="%(GeneratedFilesOutputGroup.FullPath)" />
+		</ItemGroup>
+
+	</Target>
+
+	<Target Name="GetProjectReferencesInfo"
+          Returns="@(_ProjectReferencesInfo)"
+          DependsOnTargets="$(DesignTimeBuildInitTargets)">
+
+		<ItemGroup>
+			<_ProjectReferencesInfo Include="@(ReferencePath->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))"
+                              Condition="'%(ReferencePath.ReferenceOutputAssembly)' != 'false'" />
+		</ItemGroup>
+
+		<Message Condition="'$(_REFERENCE_DEBUG)' ==  'true'"
+             Text="ProjectReferenceResolvedPath=%(_ProjectReferencesInfo.Identity)&#xA;
+                   ProjectGuid=%(_ProjectReferencesInfo.Project)&#xA;
+                   ProjectFile=%(_ProjectReferencesInfo.MsbuildSourceProjectFile)&#xA;"
+             Importance="High" />
+		<Message Condition="'$(_REFERENCE_DEBUG)' ==  'true'"
+             Text="ReferencePath=%(ReferencePath.Identity)&#xA;
+                   ReferenceSourceTarget=%(ReferencePath.ReferenceSourceTarget)&#xA;
+                   ReferenceOutputAssembly=%(ReferencePath.ReferenceOutputAssembly)&#xA;"
+             Importance="High" />
+	</Target>
+
+	<Target Name="GetAssemblyReferences"
+        Returns="@(_AssemblyReferences)"
+        DependsOnTargets="$(DesignTimeBuildInitTargets)">
+		<ItemGroup Condition ="'$(ManagedAssembly)' == 'true'">
+			<_AssemblyReferences Include="@(Reference)" Condition="'%(Reference.IsWinMDFile)' != 'true'">
+				<!-- this will be overriden with Full path if reference is resolved-->
+				<VCReferenceIdentifier Condition="'%(Reference.HintPath)' != ''">%(Reference.HintPath)</VCReferenceIdentifier>
+				<VCReferenceIdentifier Condition="'%(Reference.HintPath)' == ''">%(Reference.Identity)</VCReferenceIdentifier>
+				<Kind>VCAssemblyReference</Kind>
+			</_AssemblyReferences>
+		</ItemGroup>
+	</Target>
+
+	<Target Name="GetWinMDReferences"
+        Returns="@(_WinMDReferences)"
+        DependsOnTargets="$(DesignTimeBuildInitTargets)">
+		<ItemGroup Condition ="'$(WinMDAssembly)' == 'true'">
+			<_WinMDReferences Include="@(Reference)" Condition="'%(Reference.IsWinMDFile)' == 'true'">
+				<!-- this will be overriden with Full path if reference is resolved-->
+				<VCReferenceIdentifier Condition="'%(Reference.HintPath)' != ''">%(Reference.HintPath)</VCReferenceIdentifier>
+				<VCReferenceIdentifier Condition="'%(Reference.HintPath)' == ''">%(Reference.Identity)</VCReferenceIdentifier>
+				<Kind>VCWinRTReference</Kind>
+			</_WinMDReferences>
+		</ItemGroup>
+	</Target>
+
+	<Target Name="GetComReferences"
+        Returns="@(ComReference)"
+        DependsOnTargets="$(DesignTimeBuildInitTargets)">
+		<ItemGroup Condition ="'$(ManagedAssembly)' == 'true'">
+			<ComReference>
+				<VCReferenceIdentifier>{%(ComReference.Guid)}\%(ComReference.VersionMajor).%(ComReference.VersionMinor)</VCReferenceIdentifier>
+				<ControlGUID>{%(ComReference.Guid)}</ControlGUID>
+				<ControlLocale>%(ComReference.Lcid)</ControlLocale>
+				<ControlVersion>%(ComReference.VersionMajor).%(ComReference.VersionMinor)</ControlVersion>
+				<TypeLibraryName>%(ComReference.FileName)</TypeLibraryName>
+				<Kind>VCActiveXReference</Kind>
+			</ComReference>
+		</ItemGroup>
+	</Target>
+
+	<Target Name="GetSDKReferences"
+        Returns="@(SdkReference)"
+        DependsOnTargets="$(DesignTimeBuildInitTargets)">
+		<ItemGroup Condition ="'$(WinMDAssembly)' == 'true'">
+			<SdkReference>
+				<VCReferenceIdentifier>%(SdkReference.Identity)</VCReferenceIdentifier>
+				<Kind>VCSdkReference</Kind>
+			</SdkReference>
+		</ItemGroup>
+	</Target>
+
+
+	<Target Name="GetProjectReferences"
+        Returns="@(ProjectReference)"
+        DependsOnTargets="$(DesignTimeBuildInitTargets)">
+		<ItemGroup>
+			<ProjectReference>
+				<Name Condition="'%(ProjectReference.Name)' == ''">%(ProjectReference._ReferencedProjectName)</Name>
+				<VCReferenceIdentifier>%(ProjectReference.Project)</VCReferenceIdentifier>
+				<!-- ItemIdentifier is used to match resolved reference's 'OriginalItemSpec' metadata -->
+				<ItemIdentifier>%(ProjectReference.Project)</ItemIdentifier>
+				<Kind>VCProjectReference</Kind>
+				<ProjectFile>%(ProjectReference.FullPath)</ProjectFile>
+			</ProjectReference>
+			<ProjectReference>
+				<Name Condition="'%(ProjectReference.Name)' == ''">%(ProjectReference.FileName)</Name>
+			</ProjectReference>
+		</ItemGroup>
+	</Target>
+
+	<Target Name="GetForeignReferences"
+        Returns="@(_ForeignReferences)"
+        DependsOnTargets="$(DesignTimeBuildInitTargets);$(GetForeignReferencesDependsOn)"
+   />
+
+	<Target Name="GetResolvedReferences"
+          Returns="@(ReferencePath)"
+          DependsOnTargets="$(DesignTimeBuildInitTargets);$(GetAllReferencesInfoDependsOn)">
+		<ItemGroup>
+			<!-- Fix/assign VCReferenceIdentifier to implcit references added by targets -->
+			<ReferencePath Condition="'%(ReferencePath.ReferenceSourceTarget)' == 'ResolveAssemblyReference'">
+				<VCReferenceIdentifier Condition="'%(ReferencePath.FullPath)' != ''">%(ReferencePath.FullPath)</VCReferenceIdentifier>
+				<Kind Condition="'%(ReferencePath.Implicit)' == 'true' and '%(ReferencePath.IsWinMD)' != true">VCImplicitAssemblyReference</Kind>
+				<Kind Condition="'%(ReferencePath.Implicit)' == 'true' and '%(ReferencePath.IsWinMD)' == true">VCImplicitWinRTReference</Kind>
+			</ReferencePath>
+			<ReferencePath Condition="'%(ReferencePath.ReferenceSourceTarget)' == 'ResolveComReference'">
+				<VCReferenceIdentifier>{%(ReferencePath.Guid)}\%(ReferencePath.VersionMajor).%(ReferencePath.VersionMinor)</VCReferenceIdentifier>
+				<Kind Condition="'%(ReferencePath.Implicit)' == 'true'">VCImplicitActivXReference</Kind>
+				<ControlFullPath>%(ReferencePath.FullPath)</ControlFullPath>
+			</ReferencePath>
+			<ReferencePath Condition="'%(ReferencePath.ReferenceSourceTarget)' == 'ResolveSdkReference'">
+				<VCReferenceIdentifier>%(ReferencePath.OriginalItemSpec)</VCReferenceIdentifier>
+				<Kind Condition="'%(ReferencePath.Implicit)' == 'true'">VCImplicitSdkReference</Kind>
+			</ReferencePath>
+			<ReferencePath Condition="'%(ReferencePath.ReferenceSourceTarget)' == 'ResolveProjectReference'">
+				<VCReferenceIdentifier>%(ReferencePath.Project)</VCReferenceIdentifier>
+			</ReferencePath>
+		</ItemGroup>
+		<Message Condition="'$(_REFERENCE_DEBUG)' ==  'true'"
+             Text="ReferencePath=%(ReferencePath.Identity)&#xA;
+                   ReferenceSourceTarget=%(ReferencePath.ReferenceSourceTarget)&#xA;
+                   ReferenceOutputAssembly=%(ReferencePath.ReferenceOutputAssembly)&#xA;"
+             Importance="High" />
+	</Target>
+
+
+	<Target
+      Name="GetTargetPathWithTargetPlatformMoniker"
+      BeforeTargets="GetTargetPath"
+      DependsOnTargets="$(GetTargetPathWithTargetPlatformMonikerDependsOn);"
+      Returns="@(TargetPathWithTargetPlatformMoniker)">
+
+		<!-- If GetTargetPath from older versions (or overriden GetTargetPath) did not populate the group, we'll do it here -->
+		<ItemGroup Condition="'@(TargetPathWithTargetPlatformMoniker)' == ''">
+			<TargetPathWithTargetPlatformMoniker Include="@(WinMDFullPath)" />
+			<TargetPathWithTargetPlatformMoniker Include="$(TargetPath)" Condition="'@(TargetPathWithTargetPlatformMoniker)' == ''">
+				<ResolveableAssembly Condition="'$(ConfigurationType)' != 'StaticLibrary'">$(ManagedAssembly)</ResolveableAssembly>
+				<ResolveableAssembly Condition="'$(ConfigurationType)' == 'StaticLibrary'">false</ResolveableAssembly>
+			</TargetPathWithTargetPlatformMoniker>
+		</ItemGroup>
+
+		<ItemGroup>
+			<TargetPathWithTargetPlatformMoniker>
+				<TargetPlatformMoniker Condition ="'%(TargetPathWithTargetPlatformMoniker.TargetPlatformMoniker)' == ''">$(TargetPlatformMoniker)</TargetPlatformMoniker>
+				<TargetPlatformIdentifier Condition ="'%(TargetPathWithTargetPlatformMoniker.TargetPlatformIdentifier)' == ''">$(TargetPlatformIdentifier)</TargetPlatformIdentifier>
+			</TargetPathWithTargetPlatformMoniker>
+		</ItemGroup>
+
+		<Message Condition="'$(_REFERENCE_DEBUG)' ==  'true'" Text="****** GetTargetPathWithTargetPlatformMoniker:TargetPathWithTargetPlatformMoniker=%(TargetPathWithTargetPlatformMoniker.Identity)&#xA;
+                                                                ****** ProjectGuid=%(TargetPathWithTargetPlatformMoniker.ProjectGuid)&#xA;
+                                                                ****** ProjectFile=%(TargetPathWithTargetPlatformMoniker.MsbuildSourceProjectFile)&#xA;
+                                                                ****** TargetPlatformMoniker=%(TargetPathWithTargetPlatformMoniker.TargetPlatformMoniker)&#xA;
+                                                                ****** TargetPlatformIdentifier=%(TargetPathWithTargetPlatformMoniker.TargetPlatformIdentifier)&#xA;
+                                                                " Importance="High" />
+	</Target>
+
+
+	<Target Name="_PrintPropertyPages">
+		<ItemGroup>
+			<PropertyPageSchema>
+				<ExistsOnDisk Condition="Exists(%(PropertyPageSchema.Identity))">true</ExistsOnDisk>
+			</PropertyPageSchema>
+		</ItemGroup>
+		<Message Text="PropertyPageSchema='%(PropertyPageSchema.Identity)'&#xA;ExistsOnDisk='%(PropertyPageSchema.ExistsOnDisk)'&#xA;Context='%(PropertyPageSchema.Context)'&#xA;" Importance="High" />
+		<Message Text="ProjectTools=@(ProjectTools)&#xA;" Importance="High" />
+	</Target>
+
+	<Target Name="_PrintIntellisenseInfo"
+        DependsOnTargets="GetProjectDirectories;GetClCommandLines;GetGeneratedFiles;GetProjectReferencesInfo">
+		<Message Text="****** Configuration Settings:" Importance="High" />
+		<Message Condition="'%(ClCommandLines.ConfigurationOptions)' == 'true'" Text="****** Files=%(ClCommandLines.Files)&#xA;****** CommandLine=%(ClCommandLines.Identity)&#xA;" Importance="High" />
+		<Message Condition="'%(ClCommandLines.ConfigurationOptions)' != 'true'" Text="****** Files=%(ClCommandLines.Files)&#xA;****** CommandLine=%(ClCommandLines.Identity)&#xA;" Importance="High" />
+		<Message Text="****** ExecutablePath=$(ExecutablePath)&#xA;" Importance="High" />
+		<Message Text="****** GeneratedFiles=@(_GeneratedFiles)&#xA;" Importance="High" />
+		<Message Text="****** IncludePath=%(_ProjectDirectories.IncludePath)&#xA;" Importance="High" />
+		<Message Text="****** FrameworkIncludePath=%(_ProjectDirectories.FrameworkIncludePath)&#xA;" Importance="High" />
+		<Message Text="****** ExcludePath=%(_ProjectDirectories.ExcludePath)&#xA;" Importance="High" />
+		<Message Text="****** ReferencePath=%(_ProjectDirectories.ReferencePath)&#xA;" Importance="High" />
+		<Message Text="****** LibraryPath=$(LibraryPath)&#xA;" Importance="High" />
+		<Message Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'" Text="****** ToolsetISenseIdentifier=%(_ProjectDirectories.ToolsetISenseIdentifier)&#xA;" Importance="High" />
+		<Message Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'" Text="****** ToolsetISenseIdentifier=%(GCC/GNU)&#xA;" Importance="High" />
+		<Message Condition="'@(_ProjectReferencesInfo)' != ''"
+             Text="ProjectReferenceResolvedPath=%(_ProjectReferencesInfo.Identity)&#xA;
+                   ReferencedProjectGuid=%(_ProjectReferencesInfo.Project)&#xA;
+                   ReferencedProjectFile=%(_ProjectReferencesInfo.MsbuildSourceProjectFile)&#xA;"
+             Importance="High" />
+	</Target>
+
+	<Target Name="_ValidatePathInfo"
+        DependsOnTargets="GetProjectDirectories;GetClCommandLines;GetGeneratedFiles;GetProjectReferencesInfo">
+		<ItemGroup>
+			<Link Include="__Tempfile__" >
+				<Temp>true</Temp>
+			</Link>
+		</ItemGroup>
+
+		<ItemGroup>
+			<AllPaths Include="%(_ProjectDirectories.IncludePath);%(_ProjectDirectories.FrameworkIncludePath);%(_ProjectDirectories.ReferencePath);%(_ProjectDirectories.ExcludePath)">
+				<SourceLocation>ProjectDirectories</SourceLocation>
+			</AllPaths>
+
+			<AllPaths Include="$(ExecutablePath)" Exclude="$(Path)">
+				<SourceLocation>ProjectDirectories</SourceLocation>
+			</AllPaths>
+
+			<AllPaths Include="$(LibraryPath)">
+				<SourceLocation>ProjectDirectories</SourceLocation>
+			</AllPaths>
+
+			<AllPaths Include="%(ClCompile.AdditionalIncludeDirectories)">
+				<SourceLocation>ClCompile.AdditionalIncludeDirectories</SourceLocation>
+			</AllPaths>
+
+			<AllPaths Include="%(ClCompile.AdditionalUsingDirectories)">
+				<SourceLocation>ClCompile.AdditionalUsingDirectories</SourceLocation>
+			</AllPaths>
+
+			<AllPaths Include="@(ClCompile)" Condition="'%(ClCompile.ConfigurationOptions)' != 'true'">
+				<SourceLocation>ClCompile</SourceLocation>
+			</AllPaths>
+
+			<AllPaths Include="%(Link.AdditionalLibraryDirectories)">
+				<SourceLocation>Link.AdditionalLibrary</SourceLocation>
+			</AllPaths>
+
+			<AllPaths Remove="@(AllPaths)" Condition="Exists('%(AllPaths.FullPath)')"/>
+		</ItemGroup>
+
+		<Message Condition="'@(AllPaths)' == ''" Text="All Paths Validated." />
+		<Message Condition="'@(AllPaths)' != ''" Text="****** @(AllPaths->Count()) missing path detected:" Importance="High" />
+		<Message Condition="'@(AllPaths)' != ''" Text="Missing path: '%(AllPaths.FullPath)' from '%(AllPaths.SourceLocation)'" />
+
+	</Target>
+
+	<Target Name="_PerfIntellisenseInfo"
+        DependsOnTargets="GetProjectDirectories;GetClCommandLines;GetGeneratedFiles;GetProjectReferencesInfo">
+	</Target>
+
+	<Target Name="_PrintResolvedProjectReferences"
+      DependsOnTargets="ResolveProjectReferencesDesignTime">
+
+		<Message Text="ProjectReference=%(ProjectReference.Identity)&#xA;
+                   ReferenceOutputAssembly=%(ProjectReference.ReferenceOutputAssembly)&#xA;
+                   OutputItemType=%(ProjectReference.OutputItemType)&#xA;"
+             Importance="High" />
+
+		<Message Text="_ResolvedNativeProjectReferencePaths=%(_ResolvedNativeProjectReferencePaths.Identity)&#xA;
+                   ReferenceSourceTarget=%(_ResolvedNativeProjectReferencePaths.ReferenceSourceTarget)&#xA;
+                   ReferenceOutputAssembly=%(_ResolvedNativeProjectReferencePaths.ReferenceOutputAssembly)&#xA;"
+             Importance="High" />
+
+		<Message Text="_ResolvedProjectReferencePaths=%(_ResolvedProjectReferencePaths.Identity)&#xA;
+                   ReferenceSourceTarget=%(_ResolvedProjectReferencePaths.ReferenceSourceTarget)&#xA;
+                   ReferenceOutputAssembly=%(_ResolvedProjectReferencePaths.ReferenceOutputAssembly)&#xA;"
+             Importance="High" />
+
+	</Target>
+
+	<PropertyGroup>
+		<BuildDependsOn>SetTelemetryEnvironmentVariables;$(BuildDependsOn)</BuildDependsOn>
+		<RebuildDependsOn>SetTelemetryEnvironmentVariables;$(RebuildDependsOn)</RebuildDependsOn>
+	</PropertyGroup>
+
+	<Target Name="SetTelemetryEnvironmentVariables"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+		<SetEnv Name   ="VSTEL_SolutionSessionID"
+            Value  ="$(VSTEL_SolutionSessionID)"
+            Prefix ="false">
+		</SetEnv>
+		<SetEnv Name   ="VSTEL_CurrentSolutionBuildID"
+            Value  ="$(VSTEL_CurrentSolutionBuildID)"
+            Prefix ="false">
+		</SetEnv>
+		<SetEnv Name   ="DOTNET_CLI_TELEMETRY_OPTOUT"
+            Value  ="1"
+            Prefix ="false">
+			<Output TaskParameter="OutputEnvironmentVariable" PropertyName="DOTNET_CLI_TELEMETRY_OPTOUT"/>
+		</SetEnv>
+		<SetEnv Name   ="VSTEL_ProjectID"
+            Value  ="$(ProjectGuid)"
+            Prefix ="false">
+			<Output TaskParameter="OutputEnvironmentVariable" PropertyName="VSTEL_ProjectID"/>
+		</SetEnv>
+		<SetEnv Name   ="__clang_version__"
+            Value  ="%(ClCompile.ClangVersion)"
+            Prefix ="false">
+			<Output TaskParameter="OutputEnvironmentVariable" PropertyName="ClangVersion"/>
+		</SetEnv>
+	</Target>
+
+</Project>

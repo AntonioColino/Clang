@@ -1,0 +1,156 @@
+﻿<!--
+***********************************************************************************************
+Toolset.targets
+
+WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild AND have
+          created a backup copy.  Incorrect changes to this file will make it
+          impossible to load or build your projects from the command-line or the IDE.
+
+This file defines the steps/targets required to build Visual C++ projects
+specifically on X64 platforms.
+
+***********************************************************************************************
+-->
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+	<Import Project="$(MSBuildThisFileDirectory)ImportBefore\*.targets" Condition="Exists('$(MSBuildThisFileDirectory)ImportBefore')" />
+	<Import Project="$(VCTargetsPath)\Microsoft.CppCommon.targets" />
+	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.WindowsSDK.targets" />
+	<UsingTask TaskName="ClangCompile" AssemblyFile="$(VCTargetsPath)Microsoft.Build.CppTasks.Common.dll"/>
+
+
+  <ItemGroup Condition="'$(UseDefaultPropertyPageSchemas)' != 'false'">
+    <PropertyPageSchema Condition="('$(ConfigurationType)' != 'Utility') AND
+(!Exists('$(VCTargetsPath)Platforms\$(Platform)\PlatformToolsets\$(PlatformToolset)\$(LangID)'))"
+	    Include="$(VCTargetsPath)Platforms\$(Platform)\PlatformToolsets\$(PlatformToolset)\1033\*.xml;"/>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <ToolsetDirs16 Condition="Exists('$(VCTargetsPath16)\Platforms\$(Platform)\PlatformToolsets')">$([System.IO.Directory]::GetDirectories($(VCTargetsPath16)\Platforms\$(Platform)\PlatformToolsets))</ToolsetDirs16>
+    <ToolsetDirs16>$(ToolsetDirs16.Replace('$(VCTargetsPath16)\Platforms\$(Platform)\PlatformToolsets\', ''))</ToolsetDirs16>
+    <ToolsetDirs15 Condition="Exists('$(VCTargetsPath15)\Platforms\$(Platform)\PlatformToolsets')">$([System.IO.Directory]::GetDirectories($(VCTargetsPath15)\Platforms\$(Platform)\PlatformToolsets))</ToolsetDirs15>
+    <ToolsetDirs15>$(ToolsetDirs15.Replace('$(VCTargetsPath15)\Platforms\$(Platform)\PlatformToolsets\', ''))</ToolsetDirs15>
+	<ToolsetDirs14 Condition="Exists('$(VCTargetsPath14)\Platforms\$(Platform)\PlatformToolsets')">$([System.IO.Directory]::GetDirectories($(VCTargetsPath14)\Platforms\$(Platform)\PlatformToolsets))</ToolsetDirs14>
+    <ToolsetDirs14>$(ToolsetDirs14.Replace('$(VCTargetsPath14)\Platforms\$(Platform)\PlatformToolsets\', ''))</ToolsetDirs14>
+    <ToolsetDirs12 Condition="Exists('$(VCTargetsPath12)\Platforms\$(Platform)\PlatformToolsets')">$([System.IO.Directory]::GetDirectories($(VCTargetsPath12)\Platforms\$(Platform)\PlatformToolsets))</ToolsetDirs12>
+    <ToolsetDirs12>$(ToolsetDirs12.Replace('$(VCTargetsPath12)\Platforms\$(Platform)\PlatformToolsets\', ''))</ToolsetDirs12>
+	<ToolsetDirs11 Condition="Exists('$(VCTargetsPath11)\Platforms\$(Platform)\PlatformToolsets')">$([System.IO.Directory]::GetDirectories($(VCTargetsPath11)\Platforms\$(Platform)\PlatformToolsets))</ToolsetDirs11>
+    <ToolsetDirs11>$(ToolsetDirs11.Replace('$(VCTargetsPath11)\Platforms\$(Platform)\PlatformToolsets\', ''))</ToolsetDirs11>
+	<ToolsetDirs10 Condition="Exists('$(VCTargetsPath10)\Platforms\$(Platform)\PlatformToolsets')">$([System.IO.Directory]::GetDirectories($(VCTargetsPath10)\Platforms\$(Platform)\PlatformToolsets))</ToolsetDirs10>
+    <ToolsetDirs10>$(ToolsetDirs10.Replace('$(VCTargetsPath10)\Platforms\$(Platform)\PlatformToolsets\', ''))</ToolsetDirs10>
+    <!-- <ToolsetDirs>$(ToolsetDirs16)</ToolsetDirs> -->
+	<ToolsetDirs Condition="'$(ToolsetDirs16)' != ''">$(ToolsetDirs);$(ToolsetDirs16)</ToolsetDirs>
+	<ToolsetDirs Condition="'$(ToolsetDirs15)' != ''">$(ToolsetDirs);$(ToolsetDirs15)</ToolsetDirs>
+	<ToolsetDirs Condition="'$(ToolsetDirs14)' != ''">$(ToolsetDirs);$(ToolsetDirs14)</ToolsetDirs>
+	<ToolsetDirs Condition="'$(ToolsetDirs12)' != ''">$(ToolsetDirs);$(ToolsetDirs12)</ToolsetDirs>
+	<ToolsetDirs Condition="'$(ToolsetDirs11)' != ''">$(ToolsetDirs);$(ToolsetDirs11)</ToolsetDirs>
+	<ToolsetDirs Condition="'$(ToolsetDirs10)' != ''">$(ToolsetDirs);$(ToolsetDirs10)</ToolsetDirs>
+    <ToolsetDirs>$([System.Text.RegularExpressions.Regex]::Replace('$(ToolsetDirs)', '(?i)(?&lt;=^|;)(?&lt;dup&gt;[^;]+);(?=.*;\k&lt;dup&gt;(;|$))', ''))</ToolsetDirs>
+	<toolsetdirs>$([system.text.regularexpressions.regex]::replace('$(toolsetdirs)', '(?i)v\d+_clang_c2', ''))</toolsetdirs> 
+	<toolsetdirs>$([system.text.regularexpressions.regex]::replace('$(toolsetdirs)', '(?i)ClangCL', ''))</toolsetdirs> 
+	<toolsetdirs>$([system.text.regularexpressions.regex]::replace('$(toolsetdirs)', '(?i)Clang', ''))</toolsetdirs> 
+	<toolsetdirs>$([system.text.regularexpressions.regex]::replace('$(toolsetdirs)', '(?i)llvm', ''))</toolsetdirs> 
+    <BasePlatformToolsets>$(ToolsetDirs)</BasePlatformToolsets>
+  </PropertyGroup>
+
+
+
+	<PropertyGroup>
+		<!-- Set the path to clang-cl executable based on the value of the project-
+         level setting.  This has to be done in the .targets file since values
+         selected via the settings UI appear in the vcxproj (which is imported
+         before the targets file but after the props file) AND we need the path
+         that the user may have overridden in the UI. -->
+		<CLToolExe Condition="$(UseClangCl)">$(ClangClExecutable)</CLToolExe>
+		<LinkToolExe Condition="$(UseLldLink)">$(LldLinkExecutable)</LinkToolExe>
+		<LIBToolExe Condition="$(UseLlvmLib)">$(LlvmLibExecutable)</LIBToolExe>
+		<!-- <ClangToolExe>$(CLToolExe)</ClangToolExe> -->
+		<!-- <ClangToolPath>$(CLToolExe)</ClangToolPath> -->
+		<!-- <ToolExe>$(ClangToolExe)</ToolExe> -->
+		<IntelCompatible Condition="'$(PlatformToolset)' == '$(DefaultIntelPlatformToolset)'">true</IntelCompatible>
+		<IntelCompatible Condition="'$(PlatformToolset)' != '$(DefaultIntelPlatformToolset)'">false</IntelCompatible>
+		<IntelCompatible>$(IntelCompatible)</IntelCompatible>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- This overrides some of the property pages general AND advanced panes with no intel ext's. -->
+		<PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\general.xml"  Condition="'$(UseClangCl)' != 'false' AND '$(IntelCompatible)' == 'false'">
+			<Context>Project</Context>
+		</PropertyPageSchema>
+
+		<!-- This overrides some of the property pages general AND advanced panes with intel ext's. -->
+		<PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\general-intel.xml"  Condition="'$(UseClangCl)' != 'false' AND '$(IntelCompatible)' != 'false'">
+			<Context>Project</Context>
+		</PropertyPageSchema>
+
+		<!-- This overrides some of the property pages C++ panes with clang ext's. -->
+		<PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\clang-general.xml"  Condition="'$(GNUSwitching)' != 'false' AND '$(UseClangCl)' != 'false'">
+		</PropertyPageSchema>
+
+		<!-- This overrides some of the property pages C++ panes with clang's linker ext's. -->
+		<PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\clang-link-general.xml" Condition="'$(GNUSwitching)' != 'false' AND '$(UseLldLink)' != 'false'" >
+			<Context>Project</Context>
+		</PropertyPageSchema>
+
+		<!-- This adds the property pages llvm pane. -->
+		<PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(LangID)\llvm-general.xml">
+			<Context>Project</Context>
+		</PropertyPageSchema>
+	</ItemGroup>
+
+	<!-- This imports the design time targets. -->
+	<Import Project="$(MSBuildThisFileDirectory)\Clang.Cpp.DesignTime.targets" />
+
+
+	<!-- Take any clang-specific options that the user wants to pass AND stick them onto the
+       general purpose list of command line flags. -->
+	<ItemDefinitionGroup Condition="$(UseClangCl)">
+		<ClCompile>
+			<AdditionalOptions>$(ClangClAdditionalOptions) %(AdditionalOptions)</AdditionalOptions>
+		</ClCompile>
+	</ItemDefinitionGroup>
+	<ItemDefinitionGroup Condition="$(UseLldLink)">
+		<Link>
+			<AdditionalOptions>$(LldLinkAdditionalOptions) %(AdditionalOptions)</AdditionalOptions>
+		</Link>
+	</ItemDefinitionGroup>
+
+	<!-- We hook up a target to run every time ClCompile is about to run, the
+       purpose of which is to sanitize the command line before it gets passed to
+       the compiler.  Some options we silently discard, other options we warn on
+       AND then discard, AND other options we generate a hard error.
+
+       We try to keep hard errors to a minimum AND reserve it for cases where
+       the option implies fundamentally different assumptions about the way code
+       should be compiled.  This code would probably generate an error anyway,
+       but at least this way we give the user a more useful message about what
+       the actual problem is, rather than relying on some obscure compilation
+       error.
+
+       For any options that clang-cl discards, we would prefer to not even pass
+       them in on the command line.  So if a user starts with a cl projects AND
+       changes the toolset to clang, they could have set options such as /Gm
+       (minimal rebuild), /sdl (Security Checks), etc.  The ClCompile task would
+       then notice this AND pass these through to clang-cl.exe.  Clang would of
+       course ignore them, but in some cases (such as /Gm), they would generate
+       -Wunused-command-line-argument warnings, so it's better if we can just
+       strip them from the command line entirely.  This also has the side
+       benefit of making command lines shorter which is always nice when trying
+       to look at the tool output.
+      -->
+	<Import Project="$(MSBuildThisFileDirectory)\Clang.Intel.GNU.targets" />
+	<Import Project="$(MSBuildThisFileDirectory)\Clang.Intel.MSVC.targets" /> 
+	<Import Project="$(MSBuildThisFileDirectory)\Clang.MSVC.GNU.targets" />
+
+
+	<ItemGroup Condition="'$(ConfigurationType)' != 'Utility'">
+		<PropertyPageSchema Condition="'$(ConfigurationType)' != 'Utility'" Include="$(VCTargetsPath)$(LangID)\clang.xml"/>
+	</ItemGroup>
+	<!-- *******************************************************************************************
+        Clang Compile:	This overrides some of the platform defaults.
+*********************************************************************************************** -->
+	<Import Project="$(MSBuildThisFileDirectory)\Clang.Cpp.Default.targets" />
+
+	<Import Project="$(MSBuildThisFileDirectory)ImportAfter\*.targets" Condition="Exists('$(MSBuildThisFileDirectory)ImportAfter')" />
+</Project>

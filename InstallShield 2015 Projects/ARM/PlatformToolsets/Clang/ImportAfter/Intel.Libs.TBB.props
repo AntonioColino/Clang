@@ -1,0 +1,60 @@
+﻿<!--
+***********************************************************************************************
+*    Intel.Libs.TBB.v141.props
+*
+*    Copyright 2010-2019 Intel Corporation. All Rights Reserved.
+*
+*    The source code, information and material ("Material") contained herein is owned by Intel
+*    Corporation or its suppliers or licensors, and title to such Material remains with Intel
+*    Corporation or its suppliers or licensors. The Material contains proprietary information
+*    of Intel or its suppliers and licensors. The Material is protected by worldwide copyright
+*    laws and treaty provisions. No part of the Material may be used, copied, reproduced,
+*    modified, published, uploaded, posted, transmitted, distributed or disclosed in any way
+*    without Intel's prior express written permission. No license under any patent, copyright
+*    or other intellectual property rights in the Material is granted to or conferred upon you,
+*    either expressly, by implication, inducement, estoppel or otherwise. Any license under 
+*    such intellectual property rights must be express and approved by Intel in writing.
+*
+*    *Third Party trademarks are the property of their respective owners.
+*
+*    Unless otherwise agreed by Intel in writing, you may not remove or alter this notice or any
+*    other notice embedded in Materials by Intel or Intel's suppliers or licensors in any way.
+*
+***********************************************************************************************
+--><!--
+***********************************************************************************************
+WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and have
+          created a backup copy.  Incorrect changes to this file will make it
+          impossible to load or build your projects from the command-line or the IDE.
+***********************************************************************************************
+-->
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- Environment -->
+  <PropertyGroup Condition="'$(UseIntelTBB)' == 'true' AND '$(PlatformToolset)' == 'v141'">
+    <_TBBSubKey>$([MSBuild]::GetRegistryValue('HKEY_CURRENT_USER\Software\Intel\Suites\SelectedTools\VS15\TBB\$(ICPlatform)', 'SubKey'))</_TBBSubKey>
+    <_TBBSubKey Condition="'$(_TBBSubKey)'==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\Defaults\$(ICPlatform)', 'TBBSubKey', null, RegistryView.Registry32))</_TBBSubKey>
+
+    <TBBIncludeDir>$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(_TBBSubKey)\TBB\$(ICPlatform)', 'IncludeDir', null, RegistryView.Registry32))</TBBIncludeDir>
+    <_TBBSubKey Condition="'$(TBBIncludeDir)'==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\Defaults\$(ICPlatform)', 'TBBSubKey', null, RegistryView.Registry32))</_TBBSubKey>
+    <TBBIncludeDir Condition="'$(TBBIncludeDir)'==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(_TBBSubKey)\TBB\$(ICPlatform)', 'IncludeDir', null, RegistryView.Registry32))</TBBIncludeDir>
+
+    <IncludePath Condition="'$(UseIntelTBB)' == 'true' AND '$(UseEnv)' != 'true'">$(TBBIncludeDir);$(IncludePath)</IncludePath>
+    <TBBLibDir>$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(_TBBSubKey)\TBB\$(ICPlatform)', 'LibDir', null, RegistryView.Registry32))</TBBLibDir>
+
+    <_TBBCombinedPath Condition="'$(UseIntelTBB)' == 'true'">$([System.IO.Path]::Combine($(TBBLibDir), ..\..\..\redist\$(IntelPlatform)\tbb))</_TBBCombinedPath>
+    <_TBBCombinedPath Condition="'$(UseIntelTBB)' == 'true' AND '$(_TBBCombinedPath)' !=''">$([System.IO.Path]::GetFullPath($(_TBBCombinedPath)))</_TBBCombinedPath>
+
+    <TBBPath Condition="'$(_TBBCombinedPath)' !='' AND '$(UseIntelTBB)' == 'true' AND '$(UseIntelDAAL)' != 'false' AND Exists('$(_TBBCombinedPath)\vc_mt')">$(_TBBCombinedPath)\vc_mt;</TBBPath>
+    <TBBPath Condition="'$(_TBBCombinedPath)' !='' AND '$(TBBPath)' == '' AND '$(UseIntelTBB)' == 'true' AND Exists('$(_TBBCombinedPath)\\vc15')">$(_TBBCombinedPath)\vc15;</TBBPath>
+    <TBBPath Condition="'$(_TBBCombinedPath)' !='' AND '$(TBBPath)' == '' AND '$(UseIntelTBB)' == 'true' AND Exists('$(_TBBCombinedPath)\\vc_mt')">$(_TBBCombinedPath)\vc_mt;</TBBPath>
+    
+    <LibraryPath Condition="'$(UseIntelTBB)' == 'true' AND '$(UseIntelDAAL)' != 'false' AND Exists('$(TBBLibDir)\vc_mt') AND '$(UseEnv)' != 'true'">$(TBBLibDir)\vc_mt;$(LibraryPath)</LibraryPath>
+    <LibraryPath Condition="'$(UseIntelTBB)' == 'true' AND '$(UseIntelDAAL)' == 'false' AND Exists('$(TBBLibDir)\vc15') AND '$(UseEnv)' != 'true'">$(TBBLibDir)\vc15;$(LibraryPath)</LibraryPath>
+    <LibraryPath Condition="'$(UseIntelTBB)' == 'true' AND '$(UseIntelDAAL)' == 'false' AND !Exists('$(TBBLibDir)\vc15') AND Exists('$(TBBLibDir)\vc_mt') AND '$(UseEnv)' != 'true'">$(TBBLibDir)\vc_mt;$(LibraryPath)</LibraryPath>
+
+    
+  </PropertyGroup>
+
+</Project>

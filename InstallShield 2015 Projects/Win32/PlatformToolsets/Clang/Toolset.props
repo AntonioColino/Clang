@@ -1,0 +1,442 @@
+﻿
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<Import Project="$(MSBuildThisFileDirectory)ImportBefore\*.props" Condition="Exists('$(MSBuildThisFileDirectory)ImportBefore')" />
+	<!-- The general order of executing an MSBuild file is roughly:
+       1) vcxproj file
+       2) ├─ Import Microsoft.Cpp.props
+       3) │  └─ Import Toolset specific props (e.g. $(VCTargets)Platforms\Win32\PlatformToolsets\llvm\Toolset.props)
+       4) │     └─ Import This File (LLVM.Cpp.Common.props)
+       5) │─ Core logic of vcxproj (define files, override properties, etc)
+       6) └─ Import Microsoft.Cpp.targets
+       7)    │─ Import Toolset specific targets file (e.g. $(VCTargets)Platforms\Win32\PlatformToolsets\llvm\Toolset.targets)
+       8)    └─ Run the compiler.
+       The important thing is that we have hooks at 3, 4, and 7.  3 and 4 give
+       us the ability to provide initial values for toolchain settings (where
+       is the compiler, what values are considered "default" for a given
+       setting, etc), 7 gives us the ability to act on anything that the user
+       has overridden (such as warning or erroring on incompatible settings,
+       mapping settings to other settings, etc).
+       -->
+
+	<PropertyGroup>
+		<MSVCErrorReport>true</MSVCErrorReport>
+		<ClangMajor>10</ClangMajor>
+		<ClangMinor>0</ClangMinor>
+		<ClangPatchLevel>0</ClangPatchLevel>
+		<CudaToolkitVersion>v10.1</CudaToolkitVersion>
+		<ClangVersion>10.0</ClangVersion>
+		<PlatformShortName>x86</PlatformShortName>
+		<PlatformArchitecture>32</PlatformArchitecture>
+		<PlatformTarget>x86</PlatformTarget>
+		<PlatformNativeArch>i386</PlatformNativeArch>
+		<ThumbMode Condition="'$(ThumbMode)' == ''">Disabled</ThumbMode>
+		<ISensePlatform>x86</ISensePlatform>
+		<TargetArch>--arch=i686-pc-windows-msvc</TargetArch>
+		<ToolsetISenseIdentifier>Clang.Windows</ToolsetISenseIdentifier>
+		<ToolsetISenseIdentifierType>Clang.Windows</ToolsetISenseIdentifierType> 
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Default'"/>
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Windows'">i686-pc-windows-msvc</ClangTarget>
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Clang.Windows'">i686-pc-windows-msvc</ClangTarget>
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">i686-pc-windows-gnu</ClangTarget>
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Linux'">i686-linux-gnu</ClangTarget>
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'iOS'">i686-darwin-gnu</ClangTarget>
+		<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Android'">i686-android-gnu</ClangTarget>
+		<AdditionalIncludeHeaderExtensions>.h;.hh;.hpp;.hxx;$(AdditionalIncludeHeaderExtensions)</AdditionalIncludeHeaderExtensions>
+	</PropertyGroup>
+
+	<!-- ConfigurationType Specific values -->
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'Application' AND '$(PlatformTriplet)' == 'iOS'">
+		<TargetExt>.app</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">$(ProjectName)</TargetName>
+		<OutputType>exe</OutputType>
+		<ConfigurationType>Application</ConfigurationType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'DynamicLibrary' AND '$(PlatformTriplet)' == 'iOS'">
+		<TargetExt>.dylib</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">$(ProjectName)</TargetName>
+		<OutputType>library</OutputType>
+		<ConfigurationType>DynamicLibrary</ConfigurationType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'StaticLibrary' AND '$(PlatformTriplet)' == 'iOS'">
+		<TargetExt>.a</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<OutputType>staticlibrary</OutputType>
+		<TargetName Condition="'$(TargetName)' == ''">lib$(ProjectName)</TargetName>
+		<ConfigurationType>StaticLibrary</ConfigurationType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'Framework' AND '$(PlatformTriplet)' == 'iOS'">
+		<TargetExt>.framework</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<OutputType>library</OutputType>
+		<TargetName Condition="'$(TargetName)' == ''">$(ProjectName)</TargetName>
+		<ConfigurationType>DynamicLibrary</ConfigurationType>
+	</PropertyGroup>
+
+	<!-- ConfigurationType Specific values -->
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'Application' AND '$(PlatformTriplet)' == 'Linux'">
+		<LinkCompiled>true</LinkCompiled>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetExt>.out</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">$(ProjectName)</TargetName>
+		<OutputType>exe</OutputType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'DynamicLibrary' AND '$(PlatformTriplet)' == 'Linux'">
+		<LinkCompiled>true</LinkCompiled>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetExt>.so</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">lib$(ProjectName)</TargetName>
+		<OutputType>library</OutputType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'StaticLibrary' AND '$(PlatformTriplet)' == 'Linux'">
+		<LibCompiled>true</LibCompiled>
+		<TargetExt>.a</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">lib$(ProjectName)</TargetName>
+		<OutputType>staticlibrary</OutputType>
+	</PropertyGroup>
+
+
+
+	<!-- ConfigurationType Specific values -->
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'Application' AND '$(PlatformTriplet)' == 'Android'">
+		<LinkCompiled>true</LinkCompiled>
+		<TargetExt>.out</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">$(ProjectName)</TargetName>
+		<OutputType>exe</OutputType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'DynamicLibrary' AND '$(PlatformTriplet)' == 'Android'">
+		<LinkCompiled>true</LinkCompiled>
+		<TargetExt>.so</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">lib$(ProjectName)</TargetName>
+		<OutputType>library</OutputType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'StaticLibrary' AND '$(PlatformTriplet)' == 'Android'">
+		<LibCompiled>true</LibCompiled>
+		<TargetExt>.a</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">lib$(ProjectName)</TargetName>
+		<OutputType>staticlibrary</OutputType>
+	</PropertyGroup>
+
+	<!-- ConfigurationType Specific values -->
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'Application' AND '$(PlatformTriplet)' == 'Windows'">
+		<LinkCompiled>true</LinkCompiled>
+		<TargetExt>.exe</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">$(ProjectName)</TargetName>
+		<OutputType>exe</OutputType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'DynamicLibrary' AND '$(PlatformTriplet)' == 'Windows'">
+		<LinkCompiled>true</LinkCompiled>
+		<TargetExt>.dll</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">$(ProjectName)</TargetName>
+		<OutputType>library</OutputType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'StaticLibrary' AND '$(PlatformTriplet)' == 'Windows'">
+		<LibCompiled>true</LibCompiled>
+		<TargetExt>.lib</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">$(ProjectName)</TargetName>
+		<OutputType>staticlibrary</OutputType>
+	</PropertyGroup>
+
+	<!-- ConfigurationType Specific values -->
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'Application' AND '$(PlatformTriplet)' == 'Clang.Windows'">
+		<LinkCompiled>true</LinkCompiled>
+		<TargetExt>.exe</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">$(ProjectName)</TargetName>
+		<OutputType>Application</OutputType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'DynamicLibrary' AND '$(PlatformTriplet)' == 'Clang.Windows'">
+		<LinkCompiled>true</LinkCompiled>
+		<TargetExt>.dll</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">$(ProjectName)</TargetName>
+		<OutputType>library</OutputType>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(ConfigurationType)' == 'StaticLibrary' AND '$(PlatformTriplet)' == 'Clang.Windows'">
+		<LibCompiled>true</LibCompiled>
+		<TargetExt>.lib</TargetExt>
+		<TargetExt>$(TargetExt)</TargetExt>
+		<TargetName Condition="'$(TargetName)' == ''">$(ProjectName)</TargetName>
+		<OutputType>staticlibrary</OutputType>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<!-- Required for enabling Team Build for packaging Windows Store app projects -->
+		<OutDirWasSpecified Condition=" '$(OutDir)'!='' AND '$(OutDirWasSpecified)'=='' ">true</OutDirWasSpecified>
+		<OutDirWasSpecified Condition=" '$(OutDir)'=='' AND '$(OutDirWasSpecified)'=='' ">false</OutDirWasSpecified>
+		<!-- This initializes the values in Properties > General > Output Directory.
+       Builds will fail without this. -->
+		<IntDir Condition="'$(IntDir)'=='' AND '$(IntermediateOutputPath)'!=''">$(IntermediateOutputPath)</IntDir>
+		<IntDir Condition="'$(IntDir)'=='' AND '$(IntermediateOutputPath)'==''">$(Configuration)\</IntDir>
+		<OutDir Condition="'$(OutDir)'=='' AND '$(SolutionDir)' != ''">$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+		<OutDir Condition="'$(OutDir)'=='' AND '$(SolutionDir)' == ''">$(IntDir)\$(Configuration)\</OutDir>
+		<DebuggerFlavor Condition="'$(DebuggerFlavor)'==''">WindowsLocalDebugger</DebuggerFlavor>
+	</PropertyGroup>
+
+
+
+	<PropertyGroup>
+		<PlatformToolset Condition="'$(PlatformToolset)' != '$(DefaultIntelPlatformToolset)'">Clang</PlatformToolset>
+		<DefaultPlatformToolset Condition="'$(DefaultPlatformToolset)' == ''">Clang</DefaultPlatformToolset>
+		<_PlatformToolsetShortNameFor_clang>Clang</_PlatformToolsetShortNameFor_clang>
+		<_PlatformToolsetFriendlyNameFor_clang>Clang</_PlatformToolsetFriendlyNameFor_clang>
+		<ToolchainFriendlyName>Clang</ToolchainFriendlyName>
+	</PropertyGroup>
+
+
+	<!-- Find an installed LLVM and set up our paths. -->
+	<PropertyGroup>
+		<LLVMInstallDir>$(Registry:HKEY_LOCAL_MACHINE\SOFTWARE\LLVM\LLVM)</LLVMInstallDir>
+		<LLVMInstallDir Condition="'$(LLVMInstallDir)' == ''">$(Registry:HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\LLVM\LLVM)</LLVMInstallDir>
+		<LLVMInstallDir Condition="'$(LLVMInstallDir)' != ''">$(LLVMInstallDir)\</LLVMInstallDir>
+		<ToolsPath Condition=" '$(ToolsPath)' == '' ">$(LLVMInstallDir)</ToolsPath>
+		<VCClangBinDir>$(LLVMInstallDir)bin\</VCClangBinDir>
+		<VCClangInstallDir>$(LLVMInstallDir)</VCClangInstallDir>
+		<ClangClExecutable>$(LLVMInstallDir)bin\clang-cl.exe</ClangClExecutable>
+		<LldLinkExecutable>$(LLVMInstallDir)bin\lld-link.exe</LldLinkExecutable>
+		<LlvmLibExecutable>$(LLVMInstallDir)bin\llvm-lib.exe</LlvmLibExecutable>
+		<ClangToolExe>clang.exe</ClangToolExe>
+		<ClangToolPath>$(LLVMInstallDir)bin\</ClangToolPath>
+		<!-- Check CUDA Toolkit versioned environment variable. -->
+		<CudaToolkitDir Condition="'$(CudaToolkitDir)' == ''">$(CUDA_PATH)</CudaToolkitDir>
+		<UseClangCl>true</UseClangCl>
+		<UseLldLink>true</UseLldLink>
+		<UseLlvmLib>true</UseLlvmLib>
+		<UseCudaToolkit>true</UseCudaToolkit>
+		<GNUSwitching>true</GNUSwitching>
+		<IntelCompatible>false</IntelCompatible>
+		<IntelCompatible Condition="'$(PlatformToolset)' == '$(DefaultIntelPlatformToolset)'">true</IntelCompatible>
+		<IntelCompatible Condition="'$(PlatformToolset)' != '$(DefaultIntelPlatformToolset)'">false</IntelCompatible>
+		<ToolsetISenseIdentifier Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">Linux</ToolsetISenseIdentifier>
+		<ToolsetISenseIdentifier Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'">$(ToolsetISenseIdentifierType)</ToolsetISenseIdentifier>
+		<TargetPlatformIdentifier>$(ToolsetISenseIdentifierType)</TargetPlatformIdentifier>
+		<ISensePlatform Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">Linux</ISensePlatform>
+		<ISensePlatform Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'">$(ToolsetISenseIdentifierType)</ISensePlatform> 
+	</PropertyGroup>
+
+
+	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.WindowsSDK.props" Condition="Exists('$(VCTargetsPath)\Microsoft.Cpp.WindowsSDK.props')"/>
+	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.Common.props" />
+
+	<PropertyGroup>
+		<!-- Set some paths (such as include paths) that are common to all platforms.  This is the same as what
+         the default paths for cl will use.
+         -->
+
+		<ExecutablePath Condition="'$(ExecutablePath)' == ''">$(VCClangBinDir)\x86;$(VCClangBinDir);$(VC_ExecutablePath_x86);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(MSBuild_ExecutablePath);$(FxCopDir);$(PATH);</ExecutablePath>
+    <IncludePath Condition="'$(IncludePath)' == ''">$(IncludePath);$(VCClangInstallDir)include;$(VC_IncludePath);$(WindowsSDK_IncludePath);$(VCClangInstallDir)include\libcxx\src\include;$(VCClangInstallDir)include\libcxx\include;</IncludePath>
+		<ReferencePath Condition="'$(ReferencePath)' == ''">$(VC_ReferencesPath_x86);</ReferencePath>
+		<LibraryPath Condition="'$(LibraryPath)' == ''">$(VCClangInstallDir)lib\x86;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86</LibraryPath>
+		<LibraryWPath Condition="'$(LibraryWPath)' == ''">$(WindowsSDK_MetadataPath);</LibraryWPath>
+		<SourcePath Condition="'$(SourcePath)' == ''">$(VC_SourcePath);$(VCClangInstallDir)include\libcxx\src;</SourcePath>
+		<ExcludePath Condition="'$(ExcludePath)' == ''">$(VCClangBinDir)\x86;$(VCClangBinDir);$(VC_ExecutablePath_x86);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(FxCopDir);$(MSBuild_ExecutablePath);$(VC_LibraryPath_x86);$(SystemRoot)</ExcludePath>
+		<!--<DebugCppRuntimeFilesPath Condition="'$(DebugCppRuntimeFilesPath)' == ''">$(VCToolsInstallDir)redist\Debug_NonRedist\x86</DebugCppRuntimeFilesPath>-->
+		<DebugCppRuntimeFilesPath Condition="'$(DebugCppRuntimeFilesPath)' == ''">$(VCToolsInstallDir)redist\Debug_NonRedist\x86</DebugCppRuntimeFilesPath>
+
+
+
+		<BasicIncludePath Condition="'$(BasicIncludePath)' == ''">$(IncludePath);$(LLVMInstallDir)include;$(WindowsSDK_IncludePath);$(includeDirs);$(StlIncludeDirectories);$(Sysroot)\usr\include;</BasicIncludePath>
+		<CudaToolkitIncludeDir Condition="'$(CudaToolkitIncludeDir)' == ''">$(CudaToolkitDir)include</CudaToolkitIncludeDir>
+		<!-- wiringPi include paths for Raspberry Pi -->
+		<wiringPiIncludePath Condition="'$(wiringPiIncludePath)' == ''">$(DevEnvDir)VC\Linux\include\wiringPi\2.32</wiringPiIncludePath>
+		<LinuxIncludePath Condition="'$(LinuxIncludePath)' == ''">$(DevEnvDir)VC\Linux\include;
+	$(LOCALAPPDATA)Microsoft\Linux\HeaderCache\1.0\wsl_wsl\usr\include\x86_64-linux-gnu\gnu\;
+	$(LOCALAPPDATA)Microsoft\Linux\HeaderCache\1.0\wsl_wsl\usr\lib\gcc\x86_64-linux-gnu\7\include\;
+	$(LOCALAPPDATA)\Microsoft\Linux\HeaderCache\1.0\1488838948\usr\include\x86_64-linux-gnu\c++\7.4.0\;
+	$(LOCALAPPDATA)Microsoft\Linux\HeaderCache\1.0\wsl_wsl\usr\lib\gcc\x86_64-linux-gnu\7\include\;
+	$(LOCALAPPDATA)\Microsoft\Linux\HeaderCache\1.0\1488838948\usr\include\c++\7.4.0\;
+	$(LOCALAPPDATA)\Microsoft\Linux\HeaderCache\1.0\1488838948\usr\include\;
+	$(LOCALAPPDATA)\Microsoft\Linux\HeaderCache\1.0\1488838948\usr\include\x86_64-linux-gnu\;</LinuxIncludePath>
+		<iOSIncludePath Condition="'$(VCIDEInstallDir)' != ''">$(VCIDEInstallDir)vcpackages\IntelliSense\iOS\OSS\musl-1.1.10\arch\x86_64;$(VCIDEInstallDir)vcpackages\IntelliSense\iOS\OSS\musl-1.1.10\include;$(VCIDEInstallDir)vcpackages\IntelliSense\iOS\OSS\libcxx-3.6.2\include;$(VCIDEInstallDir)vcpackages\IntelliSense\iOS\OSS\khronos.opengles;$(VCIDEInstallDir)vcpackages\IntelliSense\iOS\OSS\openal-soft-1.16.0\include;$(VCIDEInstallDir)vcpackages\IntelliSense\iOS\OSS\sqlite-3.7.13;$(VCIDEInstallDir)vcpackages\IntelliSense\iOS\OSS\zlib-1.2.5;$(VCTargetsPath)\Application Type\iOS\$(ApplicationTypeRevision)\;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\VC\vcpackages\IntelliSense\iOS\OSS\musl-1.1.10\arch\x86_64\;</iOSIncludePath>
+		<AndroidIncludePath>$(VCTargetsPath)\Application Type\Android\3.0\</AndroidIncludePath>
+		<LlvmUsrIncludePath>$(VCClangInstallDir)include\usr\include;</LlvmUsrIncludePath>
+
+
+	<!-- Attempts to reset vc include directories based on ToolsetISenseIdentifierType.  -->
+		<IncludePath>$(VC_IncludePath);$(CudaToolkitIncludeDir);$(BasicIncludePath);</IncludePath>
+		<ReferencePath Condition="'$(ReferencePath)' == ''">$(VC_ReferencesPath_x86);</ReferencePath>
+		<AdditionalIncludeDirectories Condition="'$(AdditionalIncludeDirectories)' == ''">$(IncludePath);$(VCClangInstallDir)include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</AdditionalIncludeDirectories>
+	</PropertyGroup>
+	
+	<ItemGroup Condition="'$(ConfigurationType)'!='Utility' and '$(ConfigurationType)'!='Makefile'">
+		<PropertyPageSchema Include="$(VCTargetsPath)fxcop.xml" />
+	</ItemGroup>
+
+	<!-- Set values which are reflected in the property UI by default.  The user can override these
+       by editing the vcxproj file (or making changes via the UI, which has the same effect).
+       -->
+	<ItemDefinitionGroup>
+		<ClCompile>
+			<ICLOptions/>
+			<XILINKOptions/>
+			<XILIBOptions/>
+			<MSVCErrorReport>true</MSVCErrorReport>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Default'"/>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Windows'">i686-pc-windows-msvc</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Clang.Windows'">i686-pc-windows-msvc</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">i686-pc-windows-gnu</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Linux'">i686-linux-gnu</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'iOS'">i686-darwin-gnu</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Android'">i686-android-gnu</ClangTarget>
+			<TargetArch>$(ClangTarget)</TargetArch>
+			<GNUMode>true</GNUMode>
+			<BuildingInIde>true</BuildingInIde>
+			<ThumbMode>Disabled</ThumbMode>
+			<BasicRuntimeChecks>Default</BasicRuntimeChecks>
+			<ClangMode>true</ClangMode>
+			<WarningLevel>EnableAllWarnings</WarningLevel>
+			<DebugInformationFormat Condition="'$(GNUSwitching)' != 'false' and '$(UseDebugLibraries)' == 'true'">LineNumber</DebugInformationFormat>
+			<DebugInformationFormat Condition="'$(GNUSwitching)' != 'false' and '$(UseDebugLibraries)' != 'true'">None</DebugInformationFormat>
+			<DebugInformationFormat Condition="'$(GNUSwitching)' == 'false'">OldStyle</DebugInformationFormat>
+			<ExceptionHandling Condition="'%(ClCompile.DebugInformationFormat)' == 'EditAndContinue' and '$(IntelCompatible)' == 'true'">Async</ExceptionHandling>
+			<ExceptionHandling Condition="'%(ClCompile.DebugInformationFormat)' == 'ProgramDatabase' and '$(IntelCompatible)' == 'true'">Async</ExceptionHandling>
+			<ExceptionHandling Condition="'%(ClCompile.DebugInformationFormat)' == 'OldStyle' and '$(IntelCompatible)' == 'true'">Sync</ExceptionHandling>
+			<ExceptionHandling Condition="'$(GNUSwitching)' != 'false' and '$(IntelCompatible)' == 'true'">Enabled</ExceptionHandling>
+			<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' != 'true'">NDEBUG=0;DEBUG=0;_DEBUG=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' == 'true'">NDEBUG=1;DEBUG=1;_DEBUG=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			<Optimization Condition="'$(UseDebugLibraries)' == 'true'">Disabled</Optimization>
+			<Optimization Condition="'$(UseDebugLibraries)' != 'true'">Full</Optimization>
+			<StrictAliasing>false</StrictAliasing>
+			<ProgramDatabaseFileName>$(IntDir)</ProgramDatabaseFileName>
+			<OmitFramePointers Condition="'$(UseDebugLibraries)' == 'true'">false</OmitFramePointers>
+			<OmitFramePointers Condition="'$(UseDebugLibraries)' != 'true'">true</OmitFramePointers>
+			<OmitFramePointers Condition="'%(ClCompile.OmitFramePointers)' == ''">false</OmitFramePointers>
+			<FunctionLevelLinking Condition="'$(UseDebugLibraries)' == 'true'">false</FunctionLevelLinking>
+			<FunctionLevelLinking Condition="'$(UseDebugLibraries)' != 'true'">true</FunctionLevelLinking>
+			<DataLevelLinking Condition="'$(UseDebugLibraries)' == 'true'">false</DataLevelLinking>
+			<DataLevelLinking Condition="'$(UseDebugLibraries)' != 'true'">true</DataLevelLinking>
+			<BufferSecurityCheck>true</BufferSecurityCheck>
+			<PositionIndependentCode>false</PositionIndependentCode>
+			<UseShortEnums>false</UseShortEnums>
+			<RuntimeTypeInfo>true</RuntimeTypeInfo>
+			<CLanguageStandard Condition="'$(GNUSwitching)' == 'true'">Default</CLanguageStandard>
+			<CppLanguageStandard Condition="'$(GNUSwitching)' == 'true'">Default</CppLanguageStandard>
+			<CLanguageStandard Condition="'$(GNUSwitching)' != 'true'"/>
+			<CppLanguageStandard Condition="'$(GNUSwitching)' != 'true'"/>
+			<LanguageStandard>Default</LanguageStandard>
+			<PrecompiledHeaderOutputFileDirectory>$(IntDir)</PrecompiledHeaderOutputFileDirectory>
+			<PrecompiledHeaderOutputFile>$(IntDir)$(TargetName).pch</PrecompiledHeaderOutputFile>
+			<PrecompiledHeaderCompileAs>CompileAsCpp</PrecompiledHeaderCompileAs>
+			<PrecompiledHeader>NotUsing</PrecompiledHeader>
+			<ObjectFileName>$(IntDir)%(filename).obj</ObjectFileName>
+			<CompileAs>Default</CompileAs>
+			<TreatWarningAsError>false</TreatWarningAsError>
+			<Verbose>false</Verbose>
+			<EnablePREfast Condition="'%(ClCompile.EnablePREfast)' == ''">false</EnablePREfast>
+			<MSExtensions>true</MSExtensions>
+			<MSCompatibility>true</MSCompatibility>
+			<AdditionalOptions Condition="'$(IntelCompatible)' == 'false'">-fno-delayed-template-parsing -fno-diagnostics-show-option %(AdditionalOptions)</AdditionalOptions>
+			<AdditionalOptions Condition="'$(IntelCompatible)' != 'false'">--fno-delayed-template-parsing -fno-diagnostics-show-option --cxxlib %(AdditionalOptions)</AdditionalOptions>
+			<AdditionalOptions Condition="'$(IntelCompatible)' == ''">--fno-delayed-template-parsing -fno-diagnostics-show-option %(AdditionalOptions)</AdditionalOptions>
+			<CAdditionalWarning>switch;no-deprecated-declarations;empty-body;conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
+			<CppAdditionalWarning>switch;no-deprecated-declarations;empty-body;conversion;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
+			<UnrollLoops>false</UnrollLoops>
+			<LinkTimeOptimization>false</LinkTimeOptimization>
+			<NoCommonBlocks>false</NoCommonBlocks>
+			<ObjCExceptionHandling>Disabled</ObjCExceptionHandling>
+			<MakeStringsReadOnly>true</MakeStringsReadOnly>
+			<RelaxIEEE>false</RelaxIEEE>
+			<HideInlineMethods>false</HideInlineMethods>
+			<SymbolsHiddenByDefault>false</SymbolsHiddenByDefault>
+			<ObjCAutomaticRefCounting>true</ObjCAutomaticRefCounting>
+			<AdditionalIncludeDirectories>%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+			<ThumbMode>Disabled</ThumbMode>
+			<EnableNeonCodegen>false</EnableNeonCodegen>
+			<MinimalRebuildFromTracking>true</MinimalRebuildFromTracking>
+			<PrecompiledHeaderOutputFileDirectory>$(IntDir)</PrecompiledHeaderOutputFileDirectory>
+			<PrecompiledHeaderOutputFile/>
+			<PrecompiledHeaderCompileAs>CompileAsCpp</PrecompiledHeaderCompileAs>
+			<ClangVersion>10.0</ClangVersion>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Default'"/>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Windows'">i686-pc-windows-msvc</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Clang.Windows'">i686-pc-windows-msvc</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">i686-pc-windows-gnu</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Linux'">i686-linux-gnu</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'iOS'">i686-darwin-gnu</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Android'">i686-android-gnu</ClangTarget>
+			<TargetTriplet>$(ClangTarget)</TargetTriplet>
+			<ToolsetISenseIdentifier Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">Linux</ToolsetISenseIdentifier>
+			<ToolsetISenseIdentifier Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'">$(ToolsetISenseIdentifierType)</ToolsetISenseIdentifier>
+			<TargetPlatformIdentifier Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">Linux</TargetPlatformIdentifier>
+			<TargetPlatformIdentifier Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'">$(ToolsetISenseIdentifierType)</TargetPlatformIdentifier>
+			<ISensePlatform Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">Linux</ISensePlatform>
+			<ISensePlatform Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'">$(ToolsetISenseIdentifierType)</ISensePlatform> 
+		</ClCompile>
+		<Link>
+			<AdditionalDependencies>$(StlAdditionalDependencies);%(Link.AdditionalDependencies)</AdditionalDependencies>
+			<AdditionalLibraryDirectories>%(Link.AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+			<SharedLibrarySearchPath>%(Link.SharedLibrarySearchPath)</SharedLibrarySearchPath>
+			<VerboseOutput>false</VerboseOutput>
+			<Trace>false</Trace>
+			<PrintMap>false</PrintMap>
+			<IncrementalLink>false</IncrementalLink>
+			<IgnoreDefaultLibraries>false</IgnoreDefaultLibraries>
+			<UnresolvedSymbolReferences>true</UnresolvedSymbolReferences>
+			<OptimizeForMemory>false</OptimizeForMemory>
+			<DebuggerSymbolInformation>true</DebuggerSymbolInformation>
+			<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+			<WholeArchiveBegin>false</WholeArchiveBegin>
+			<Relocation>true</Relocation>
+			<NoExecStackRequired>true</NoExecStackRequired>
+			<MinimalRebuildFromTracking>true</MinimalRebuildFromTracking>
+			<LinkDLL Condition="'$(ConfigurationType)' == 'DynamicLibrary'">true</LinkDLL>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Default'"/>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Windows'">i686-pc-windows-msvc</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Clang.Windows'">i686-pc-windows-msvc</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">i686-pc-windows-gnu</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Linux'">i686-linux-gnu</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'iOS'">i686-darwin-gnu</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Android'">i686-android-gnu</ClangTarget>
+			<TargetTriplet>$(ClangTarget)</TargetTriplet>
+			<ToolsetISenseIdentifier Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">Linux</ToolsetISenseIdentifier>
+			<ToolsetISenseIdentifier Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'">$(ToolsetISenseIdentifierType)</ToolsetISenseIdentifier>
+			<TargetPlatformIdentifier Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">Linux</TargetPlatformIdentifier>
+			<TargetPlatformIdentifier Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'">$(ToolsetISenseIdentifierType)</TargetPlatformIdentifier>
+			<ISensePlatform Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">Linux</ISensePlatform>
+			<ISensePlatform Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'">$(ToolsetISenseIdentifierType)</ISensePlatform> 
+		</Link>
+		<Lib>
+			<OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+			<Command>Replacement</Command>
+			<CreateIndex>true</CreateIndex>
+			<NoWarnOnCreate>true</NoWarnOnCreate>
+			<MinimalRebuildFromTracking>true</MinimalRebuildFromTracking>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Default'"/>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Windows'">i686-pc-windows-msvc</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Clang.Windows'">i686-pc-windows-msvc</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">i686-pc-windows-gnu</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Linux'">i686-linux-gnu</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'iOS'">i686-darwin-gnu</ClangTarget>
+			<ClangTarget Condition="'$(ToolsetISenseIdentifierType)' == 'Android'">i686-android-gnu</ClangTarget>
+			<TargetTriplet>$(ClangTarget)</TargetTriplet>
+			<ToolsetISenseIdentifier Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">Linux</ToolsetISenseIdentifier>
+			<ToolsetISenseIdentifier Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'">$(ToolsetISenseIdentifierType)</ToolsetISenseIdentifier>
+			<TargetPlatformIdentifier Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">Linux</TargetPlatformIdentifier>
+			<TargetPlatformIdentifier Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'">$(ToolsetISenseIdentifierType)</TargetPlatformIdentifier>
+			<ISensePlatform Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">Linux</ISensePlatform>
+			<ISensePlatform Condition="'$(ToolsetISenseIdentifierType)' != 'GCC'">$(ToolsetISenseIdentifierType)</ISensePlatform> 
+		</Lib>
+	</ItemDefinitionGroup>
+
+	<Import Project="$(MSBuildThisFileDirectory)ImportAfter\*.props" Condition="Exists('$(MSBuildThisFileDirectory)ImportAfter')" />
+
+</Project>

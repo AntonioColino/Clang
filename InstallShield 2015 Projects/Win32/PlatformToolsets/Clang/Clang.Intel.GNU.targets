@@ -1,0 +1,191 @@
+﻿<!--
+***********************************************************************************************
+Toolset.targets
+
+WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild AND have
+          created a backup copy.  Incorrect changes to this file will make it
+          impossible to load or build your projects from the command-line or the IDE.
+
+This file defines the steps/targets required to build Visual C++ projects
+specifically on X64 platforms.
+
+***********************************************************************************************
+-->
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+	<!-- We hook up a target to run every time ClCompile is about to run, the
+       purpose of which is to sanitize the command line before it gets passed to
+       the compiler.  Some options we silently discard, other options we warn on
+       AND then discard, AND other options we generate a hard error.
+
+       We try to keep hard errors to a minimum AND reserve it for cases where
+       the option implies fundamentally different assumptions about the way code
+       should be compiled.  This code would probably generate an error anyway,
+       but at least this way we give the user a more useful message about what
+       the actual problem is, rather than relying on some obscure compilation
+       error.
+
+       For any options that clang-cl discards, we would prefer to not even pass
+       them in on the command line.  So if a user starts with a cl projects AND
+       changes the toolset to clang, they could have set options such as /Gm
+       (minimal rebuild), /sdl (Security Checks), etc.  The ClCompile task would
+       then notice this AND pass these through to clang-cl.exe.  Clang would of
+       course ignore them, but in some cases (such as /Gm), they would generate
+       -Wunused-command-line-argument warnings, so it's better if we can just
+       strip them from the command line entirely.  This also has the side
+       benefit of making command lines shorter which is always nice when trying
+       to look at the tool output.
+      -->
+	<Target Name="BeforeClCompile" BeforeTargets="ClCompile" Condition="'$(UseClangCl)' AND '$(IntelCompatible)' == 'true' AND '$(GNUSwitching)' == 'true'">
+		<!-- Validate Toolkit dir. -->
+		<Error
+            Condition="!Exists($(CudaToolkitDir)) and '$(UseCudaToolkit)' == 'true'"
+            Text="The CUDA Toolkit $(CudaToolkitVersion) directory '$(CudaToolkitDir)' does not exist.  Please verify the CUDA Toolkit is installed properly or define the CudaToolkitDir property to resolve this error." />
+		<!-- Validate LLVM dirs. -->
+		<Error
+            Condition="!Exists($(LLVMInstallDir)) and '$(UseClangCl)' == 'true'"
+            Text="The LLVM directory does not exist.  Please verify the LLVM is installed properly or define the LLVMInstallDir property to resolve this error." />
+		<Error
+            Condition="!Exists($(LLVMInstallDir)) and '$(UseLldLink)' == 'true'"
+            Text="The LLVM directory does not exist.  Please verify the LLVM is installed properly or define the LLVMInstallDir property to resolve this error." />
+		<Error
+            Condition="!Exists($(LLVMInstallDir)) and '$(UseLlvmLib)' == 'true'"
+            Text="The LLVM directory does not exist.  Please verify the LLVM is installed properly or define the LLVMInstallDir property to resolve this error." />
+
+		<ItemGroup>
+
+			<ClCompile>
+				<DebugInformationFormat Condition="'%(ClCompile.DebugInformationFormat)' == 'ProgramDatabase'">OldStyle</DebugInformationFormat>
+				<DebugInformationFormat Condition="'%(ClCompile.DebugInformationFormat)' == 'EditAndContinue'">OldStyle</DebugInformationFormat>
+				<DebugInformationFormat Condition="'%(ClCompile.DebugInformationFormat)' == 'OldStyle'">OldStyle</DebugInformationFormat>
+				<DebugInformationFormat Condition="'%(ClCompile.DebugInformationFormat)' == 'LineNumber'">OldStyle</DebugInformationFormat>
+				<DebugInformationFormat Condition="'%(ClCompile.DebugInformationFormat)' == 'FullDebug'">OldStyle</DebugInformationFormat>
+				<ExceptionHandling Condition="'%(ClCompile.ExceptionHandling)' == 'Disabled'"/>
+				<ExceptionHandling Condition="'%(ClCompile.ExceptionHandling)' == 'Enabled'">Async</ExceptionHandling>
+				<ExceptionHandling Condition="'%(ClCompile.ExceptionHandling)' == 'UnwindTables'">Sync</ExceptionHandling>
+
+				<!-- Begin GNU C switching -->
+				<LanguageStandard Condition="'%(ClCompile.CLanguageStandard)' == 'c89' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'"/>
+				<CCppSupport Condition="'%(ClCompile.CLanguageStandard)' == 'c89' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'">C89Support</CCppSupport>
+
+				<LanguageStandard Condition="'%(ClCompile.CLanguageStandard)' == 'iso9899:199409' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'"/>
+				<CCppSupport Condition="'%(ClCompile.CLanguageStandard)' == 'iso9899:199409' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'">C99Support</CCppSupport>
+
+
+				<LanguageStandard Condition="'%(ClCompile.CLanguageStandard)' == 'c99' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'"/>
+				<CCppSupport Condition="'%(ClCompile.CLanguageStandard)' == 'c99' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'">C99Support</CCppSupport>
+
+
+				<LanguageStandard Condition="'%(ClCompile.CLanguageStandard)' == 'c11' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'"/>
+				<CCppSupport Condition="'%(ClCompile.CLanguageStandard)' == 'c11' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'">C11Support</CCppSupport>
+
+
+				<LanguageStandard Condition="'%(ClCompile.CLanguageStandard)' == 'gnu89' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'"/>
+				<CCppSupport Condition="'%(ClCompile.CLanguageStandard)' == 'gnu89' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'">C89Support</CCppSupport>
+
+				<LanguageStandard Condition="'%(ClCompile.CLanguageStandard)' == 'gnu99' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'"/>
+				<CCppSupport Condition="'%(ClCompile.CLanguageStandard)' == 'gnu99' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'">C99Support</CCppSupport>
+
+				<LanguageStandard Condition="'%(ClCompile.CLanguageStandard)' == 'gnu11' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'">stdcpplatest</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CLanguageStandard)' == 'gnu11' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'">C11Support</CCppSupport>
+
+				<LanguageStandard Condition="'%(ClCompile.CLanguageStandard)' == 'Default' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'">stdcpplatest</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CLanguageStandard)' == 'Default' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsC'">C11Support</CCppSupport>
+				<!-- End GNU C switching -->
+
+				<!-- Begin MSVC C switching -->
+				<!-- End MSVC C switching -->
+
+				<!-- Begin GNU C++ switching -->
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'c++98' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpplatest</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'c++98' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">C99Support</CCppSupport>
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++98' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpplatest</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++98' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">C99Support</CCppSupport>
+
+
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'c++11' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpplatest</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'c++11' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">Cpp11Support</CCppSupport>
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++11' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpplatest</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++11' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">Cpp11Support</CCppSupport>
+
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'c++1y' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpp14</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'c++1y' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">Cpp14Support</CCppSupport>
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++1y' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpp14</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++1y' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">Cpp14Support</CCppSupport>
+
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'c++14' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpp14</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'c++14' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">Cpp14Support</CCppSupport>
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++14' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpp14</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++14' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">Cpp14Support</CCppSupport>
+
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'c++1z' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpp17</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'c++1z' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">Cpp17Support</CCppSupport>
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++1z' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpp17</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++1z' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">Cpp17Support</CCppSupport>
+
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'c++17' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpp17</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'c++17' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">Cpp17Support</CCppSupport>
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++17' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpp17</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++17' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">Cpp17Support</CCppSupport>
+
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'c++2a' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpplatest</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'c++2a' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">Cpp17Support</CCppSupport>
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++2a' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpplatest</LanguageStandard>
+				<CCppSupport Condition="'%(ClCompile.CppLanguageStandard)' == 'gnu++2a' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">Cpp17Support</CCppSupport>
+
+
+				<LanguageStandard Condition="'%(ClCompile.CppLanguageStandard)' == 'Default' AND '$(GNUSwitching)' != 'false' AND '%(ClCompile.CompileAs)' == 'CompileAsCpp'">stdcpplatest</LanguageStandard>
+				<!-- End GNU C++ switching -->
+				<!-- Begin MSVC C++ switching -->
+				<!-- End MSVC C++ switching -->
+				<ICLOptions/>
+				<XILINKOptions/>
+				<XILIBOptions/>
+				<ClangVersion>%(ClCompile.ClangVersion)</ClangVersion>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' != 'true' AND ('$(ToolsetISenseIdentifierType)' == 'Windows')">DEBUG=0;_DEBUG=0;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' != 'true' AND ( '$(ToolsetISenseIdentifierType)' == 'GCC' OR '$(ToolsetISenseIdentifierType)'== 'Linux' OR '$(ToolsetISenseIdentifierType)' == 'iOS' OR '$(ToolsetISenseIdentifierType)' == 'Android' OR '$(ToolsetISenseIdentifierType)' == 'Clang.Windows')">DEBUG=0;_DEBUG=0;__clang_version__=%(ClCompile.ClangVersion);__clang_major__=$(ClangMajor);__clang_minor__=$(ClangMinor);__clang_patchlevel__=$(ClangPatchLevel);__clang__=1;__llvm__=1;__x86__=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' == 'true' AND ('$(ToolsetISenseIdentifierType)' == 'Windows')">DEBUG=1;_DEBUG=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+				<PreprocessorDefinitions Condition="'$(UseDebugLibraries)' == 'true' AND ( '$(ToolsetISenseIdentifierType)' == 'GCC' OR '$(ToolsetISenseIdentifierType)'== 'Linux' OR '$(ToolsetISenseIdentifierType)' == 'iOS' OR '$(ToolsetISenseIdentifierType)' == 'Android' OR '$(ToolsetISenseIdentifierType)' == 'Clang.Windows')">DEBUG=1;_DEBUG=1;__clang_version__=%(ClCompile.ClangVersion);__clang_major__=$(ClangMajor);__clang_minor__=$(ClangMinor);__clang_patchlevel__=$(ClangPatchLevel);__clang__=1;__llvm__=1;__x86__=1;__JCC__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions> 
+				<UndefinePreprocessorDefinitions Condition="'$(ToolsetISenseIdentifierType)' == 'GCC'">__linux__;__unix__</UndefinePreprocessorDefinitions>
+				<!-- Unset any options that we either silently ignore or warn about due to compatibility.
+             Generally when an option is set to no value, that means "Don't pass an option to the
+             compiler at all."
+             -->
+				<WholeProgramOptimization>false</WholeProgramOptimization>
+				<WholeProgramOptimization/>
+				<EnableFiberSafeOptimizations/>
+				<IgnoreStandardIncludePath/>
+				<EnableParallelCodeGeneration/>
+				<ForceConformanceInForLoopScope/>
+				<TreatWChar_tAsBuiltInType/>
+				<SDLCheck/>
+				<GenerateXMLDocumentationFiles/>
+				<BrowseInformation/>
+				<EnablePREfast/>
+				<MinimalRebuild/>
+				<StringPooling/>
+				<ExpandAttributedSource/>
+				<EnforceTypeConversionRules/>
+				<ErrorReporting/>
+				<DisableLanguageExtensions/>
+				<ProgramDataBaseFileName/>
+				<DisableSpecificWarnings/>
+				<TreatSpecificWarningsAsErrors/>
+				<ForcedUsingFiles/>
+				<PREfastLog/>
+				<PREfastAdditionalOptions/>
+				<PREfastAdditionalPlugins/>
+				<MultiProcessorCompilation/>
+				<UseFullPaths/>
+				<RemoveUnreferencedCodeData/>
+				<ConformanceMode>false</ConformanceMode>
+				<!-- We can't just unset BasicRuntimeChecks, as that will pass /RTCu to the compiler.
+             We have to explicitly set it to 'Default' to avoid passing anything. -->
+				<BasicRuntimeChecks>Default</BasicRuntimeChecks>
+			</ClCompile>
+		</ItemGroup>
+	</Target>
+
+
+</Project>

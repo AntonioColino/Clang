@@ -1,0 +1,256 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+***********************************************************************************************
+*    Copyright 2010-2019 Intel Corporation. All Rights Reserved.
+*
+*    The source code, information and material ("Material") contained herein is owned by Intel
+*    Corporation or its suppliers or licensors, and title to such Material remains with Intel
+*    Corporation or its suppliers or licensors. The Material contains proprietary information
+*    of Intel or its suppliers and licensors. The Material is protected by worldwide copyright
+*    laws and treaty provisions. No part of the Material may be used, copied, reproduced,
+*    modified, published, uploaded, posted, transmitted, distributed or disclosed in any way
+*    without Intel's prior express written permission. No license under any patent, copyright
+*    or other intellectual property rights in the Material is granted to or conferred upon you,
+*    either expressly, by implication, inducement, estoppel or otherwise. Any license under 
+*    such intellectual property rights must be express and approved by Intel in writing.
+*
+*    *Third Party trademarks are the property of their respective owners.
+*
+*    Unless otherwise agreed by Intel in writing, you may not remove or alter this notice or any
+*    other notice embedded in Materials by Intel or Intel's suppliers or licensors in any way.
+*
+***********************************************************************************************
+-->
+<Rule Name="Intel Performance Libraries" Order="7" PageTemplate="generic" xmlns="http://schemas.microsoft.com/build/2009/properties" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=mscorlib" xmlns:my="http://schemas.microsoft.com/developer/msbuild/tasks/2005">
+  <Rule.Categories>
+    <Category Name="IPP" DisplayName="Intel® Integrated Performance Primitives" Description="Intel® Integrated Performance Primitives"/>
+    <Category Name="TBB" DisplayName="Intel® Threading Building Blocks" Description="Intel® Threading Building Blocks"/>
+    <Category Name="MKL" DisplayName="Intel® Math Kernel Library" Description="Intel® Math Kernel Library versions"/> 
+    <Category Name="DAAL" DisplayName="Intel® Data Analytics Acceleration Library" Description="Intel® Data Analytics Acceleration Library versions"/> 
+  </Rule.Categories>
+  <Rule.DisplayName>
+    <sys:String>Intel Performance Libraries</sys:String>
+  </Rule.DisplayName>
+  <Rule.DataSource>
+    <DataSource Persistence="ProjectFile" Label="Configuration"/>
+  </Rule.DataSource>
+
+  <EnumProperty Name="UseIntelIPP" IncludeInCommandLine="false" Category="IPP" F1Keyword="intel.cpp.bldaps_use_perflibs_vs10">
+    <EnumProperty.DisplayName>
+      <sys:String>Use Intel® IPP</sys:String>
+    </EnumProperty.DisplayName>
+    <EnumProperty.Description>
+      <sys:String>Use Intel® Integrated Performance Primitives in the application.</sys:String>
+    </EnumProperty.Description>
+    <EnumValue Name="false">
+      <EnumValue.DisplayName>
+        <sys:String>No</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Do not use Intel® Integrated Performance Primitives in the application.</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="true">
+      <EnumValue.DisplayName>
+        <sys:String>Default Linking Method</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>TBD...</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="Parallel_Static">
+      <EnumValue.DisplayName>
+        <sys:String>Multi-threaded Static Library</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Add include path; Add library path; define _IPP_PARALLEL_STATIC</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="Sequential">
+      <EnumValue.DisplayName>
+        <sys:String>Single-threaded Static Library</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Add include path; Add library path; define _IPP_SEQUENTIAL_STATIC</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="Parallel_Dynamic">
+      <EnumValue.DisplayName>
+        <sys:String>Multi-threaded DLL</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Add include path; Add library path; define _IPP_PARALLEL_DYNAMIC</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="Sequential_Dynamic">
+      <EnumValue.DisplayName>
+        <sys:String>Single-threaded DLL</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Add include path; Add library path; define _IPP_SEQUENTIAL_DYNAMIC</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+  </EnumProperty>
+
+  <BoolProperty Name="UseIntelTBB" IncludeInCommandLine="false" Category="TBB" F1Keyword="intel.cpp.bldaps_use_perflibs_vs10">
+    <BoolProperty.DisplayName>
+      <sys:String>Use Intel® TBB</sys:String>
+    </BoolProperty.DisplayName>
+    <BoolProperty.Description>
+      <sys:String>Use Intel® Threading Building Blocks in the application.</sys:String>
+    </BoolProperty.Description>
+  </BoolProperty>
+
+  <BoolProperty Name="InstrumentIntelTBB" IncludeInCommandLine="false" Category="TBB" F1Keyword="intel.cpp.bldaps_use_perflibs_vs10">
+    <BoolProperty.DisplayName>
+      <sys:String>Instrument for use with Intel® Threading Analysis Tools</sys:String>
+    </BoolProperty.DisplayName>
+    <BoolProperty.Description>
+      <sys:String>Turn on to analyze your release mode application - not required for debug mode.</sys:String>
+    </BoolProperty.Description>
+  </BoolProperty>
+
+  <EnumProperty Name="UseIntelDAAL" IncludeInCommandLine="false" Category="DAAL" F1Keyword="intel.cpp.bldaps_use_perflibs_vs10">
+    <EnumProperty.DisplayName>
+      <sys:String>Use Intel® DAAL</sys:String>
+    </EnumProperty.DisplayName>
+    <EnumProperty.Description>
+      <sys:String>Use Intel® Data Analytics Acceleration Library in the application.</sys:String>
+    </EnumProperty.Description>
+    <EnumValue Name="false">
+      <EnumValue.DisplayName>
+        <sys:String>No</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Do not use Intel® Data Analytics Acceleration Library in the application.</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="true">
+      <EnumValue.DisplayName>
+        <sys:String>Default Linking Method</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>TBD...</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="Parallel_Static">
+      <EnumValue.DisplayName>
+        <sys:String>Multi-threaded Static Library</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Add include path; Add library path; define _DAAL_PAR_STATIC</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="Sequential">
+      <EnumValue.DisplayName>
+        <sys:String>Single-threaded Static Library</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Add include path; Add library path; define _DAAL_SEQ_STATIC</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="Parallel_Dynamic">
+      <EnumValue.DisplayName>
+        <sys:String>Multi-threaded DLL</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Add include path; Add library path; define _DAAL_PAR_DYNAMIC</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="Sequential_Dynamic">
+      <EnumValue.DisplayName>
+        <sys:String>Single-threaded DLL</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Add include path; Add library path; define _DAAL_SEQ_DYNAMIC</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+  </EnumProperty>
+
+      
+  <EnumProperty Name="UseIntelMKL" IncludeInCommandLine="false" Category="MKL" F1Keyword="intel.cpp.bldaps_use_perflibs_vs10">
+      
+    <EnumProperty.DisplayName>
+      <sys:String>Use Intel® MKL</sys:String>
+    </EnumProperty.DisplayName>
+    <EnumProperty.Description>
+      <sys:String>Use Intel® Math Kernel Library in the application.</sys:String>
+    </EnumProperty.Description>
+    <EnumValue Name="No">
+      <EnumValue.DisplayName>
+        <sys:String>No</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Do not use Intel® Math Kernel Library in the application.</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="Parallel">
+      <EnumValue.DisplayName>
+        <sys:String>Parallel</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>TBD...</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="Sequential">
+      <EnumValue.DisplayName>
+        <sys:String>Sequential</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>TBD...</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="Cluster">
+      <EnumValue.DisplayName>
+        <sys:String>Cluster</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>TBD...</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+  </EnumProperty>
+
+  <BoolProperty Name="UseILP64Interfaces" IncludeInCommandLine="false" Category="MKL" F1Keyword="intel.cpp.bldaps_use_perflibs_vs10">
+      
+    <BoolProperty.DisplayName>
+      <sys:String>Use ILP64 interfaces</sys:String>
+    </BoolProperty.DisplayName>
+    <BoolProperty.Description>
+      <sys:String>Use the corresponding ilp Intel® MKL libraries in the application.</sys:String>
+    </BoolProperty.Description>
+  </BoolProperty>
+
+  <EnumProperty Name="UseMpiLibrary" IncludeInCommandLine="false" Category="MKL" F1Keyword="intel.cpp.bldaps_use_perflibs_vs10">
+        
+    <EnumProperty.DisplayName>
+      <sys:String>Use MPI Library</sys:String>
+    </EnumProperty.DisplayName>
+    <EnumProperty.Description>
+      <sys:String>Use the corresponding MPI Library.</sys:String>
+    </EnumProperty.Description>
+    <EnumValue Name="INTELMPI">
+      <EnumValue.DisplayName>
+        <sys:String>Intel(R) MPI</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Use Intel(R) MPI Library.</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="MPICH2">
+      <EnumValue.DisplayName>
+        <sys:String>MPICH2</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Use MPICH2 Library.</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+    <EnumValue Name="MSMPI">
+      <EnumValue.DisplayName>
+        <sys:String>MS-MPI</sys:String>
+      </EnumValue.DisplayName>
+      <EnumValue.Description>
+        <sys:String>Use MS-MPI Library.</sys:String>
+      </EnumValue.Description>
+    </EnumValue>
+  </EnumProperty>
+</Rule>

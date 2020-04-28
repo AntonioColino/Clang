@@ -1,0 +1,61 @@
+﻿<!--
+***********************************************************************************************
+*    Intel.Libs.MKL.v141.props
+*
+*    Copyright 2010-2019 Intel Corporation. All Rights Reserved.
+*
+*    The source code, information and material ("Material") contained herein is owned by Intel
+*    Corporation or its suppliers or licensors, and title to such Material remains with Intel
+*    Corporation or its suppliers or licensors. The Material contains proprietary information
+*    of Intel or its suppliers and licensors. The Material is protected by worldwide copyright
+*    laws and treaty provisions. No part of the Material may be used, copied, reproduced,
+*    modified, published, uploaded, posted, transmitted, distributed or disclosed in any way
+*    without Intel's prior express written permission. No license under any patent, copyright
+*    or other intellectual property rights in the Material is granted to or conferred upon you,
+*    either expressly, by implication, inducement, estoppel or otherwise. Any license under 
+*    such intellectual property rights must be express and approved by Intel in writing.
+*
+*    *Third Party trademarks are the property of their respective owners.
+*
+*    Unless otherwise agreed by Intel in writing, you may not remove or alter this notice or any
+*    other notice embedded in Materials by Intel or Intel's suppliers or licensors in any way.
+*
+***********************************************************************************************
+--><!--
+***********************************************************************************************
+WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and have
+          created a backup copy.  Incorrect changes to this file will make it
+          impossible to load or build your projects from the command-line or the IDE.
+***********************************************************************************************
+-->
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- Environment -->  
+  <PropertyGroup Condition="'$(UseIntelMKL)' != '' AND '$(UseIntelMKL)' != 'No' AND '$(PlatformToolset)' == 'v141'">
+    <_MKLSubKey>$([MSBuild]::GetRegistryValue('HKEY_CURRENT_USER\Software\Intel\Suites\SelectedTools\VS15\MKL\$(ICPlatform)', 'SubKey'))</_MKLSubKey>
+    <_MKLSubKey Condition="'$(_MKLSubKey)'==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\Defaults\$(ICPlatform)', 'MKLSubKey', null, RegistryView.Registry32))</_MKLSubKey>
+
+    <MKLMajorVersion>$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(_MKLSubKey)\MKL', 'Major Version', null, RegistryView.Registry32))</MKLMajorVersion>
+    <_MKLSubKey Condition="'$(MKLMajorVersion)'==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\Defaults\$(ICPlatform)', 'MKLSubKey', null, RegistryView.Registry32))</_MKLSubKey>
+    <MKLMajorVersion Condition="'$(MKLMajorVersion)'==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(_MKLSubKey)\MKL', 'Major Version', null, RegistryView.Registry32))</MKLMajorVersion>
+    <MKLMinorVersion>$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(_MKLSubKey)\MKL', 'Minor Version', null, RegistryView.Registry32))</MKLMinorVersion>
+    <MKLMNewArgFormat>$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(_MKLSubKey)\MKL', 'New Argument Format', null, RegistryView.Registry32))</MKLMNewArgFormat>
+
+    <MKLProductDir>$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(_MKLSubKey)\MKL', 'ProductDir', null, RegistryView.Registry32))</MKLProductDir>
+    <MKLIncludeDir>$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(_MKLSubKey)\MKL\$(ICPlatform)', 'IncludeDir', null, RegistryView.Registry32))</MKLIncludeDir>
+    <MKLLibDir>$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(_MKLSubKey)\MKL\$(ICPlatform)', 'LibDir', null, RegistryView.Registry32))</MKLLibDir>
+    <OmpLibDir>$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(_MKLSubKey)\MKL\$(ICPlatform)', 'OMPLibDir', null, RegistryView.Registry32))</OmpLibDir>
+
+    <_MKLCombinedPath Condition="'$(UseIntelMKL)' != '' AND '$(UseIntelMKL)' != 'No'">$([System.IO.Path]::Combine($(MKLLibDir), ..\..\..\redist\$(IntelPlatform)\mkl))</_MKLCombinedPath>
+    <MKLPath Condition="'$(_MKLCombinedPath)' !=''">$([System.IO.Path]::GetFullPath($(_MKLCombinedPath)));</MKLPath>
+
+    <LibraryPath Condition="'$(UseIntelMKL)' != '' AND '$(UseIntelMKL)' != 'No' AND '$(UseEnv)' != 'true'">$(MKLLibDir);$(LibraryPath)</LibraryPath>
+    <LibraryPath Condition="'$(UseIntelMKL)' != '' AND '$(UseIntelMKL)' != 'No' AND '$(UseIntelMKL)' != 'Sequential' AND '$(UseEnv)' != 'true'">$(OmpLibDir);$(LibraryPath)</LibraryPath>
+    <IncludePath Condition="'$(UseIntelMKL)' != '' AND '$(UseIntelMKL)' != 'No' AND !$(MKLIncludeDir.Contains('/I')) AND '$(UseEnv)' != 'true'">$(MKLIncludeDir);$(IncludePath)</IncludePath>
+
+    <MKLCluster>$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(_MKLSubKey)\MKL\$(ICPlatform)', 'MKLCluster', null, RegistryView.Registry32))</MKLCluster>
+    <MKLCluster Condition="'$(MKLCluster)' == ''">0</MKLCluster>
+  </PropertyGroup>
+
+</Project>

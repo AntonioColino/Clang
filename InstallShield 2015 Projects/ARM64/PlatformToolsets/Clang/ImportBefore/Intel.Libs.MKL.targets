@@ -1,0 +1,109 @@
+﻿<!--
+***********************************************************************************************
+*    Intel.Libs.MKL.v141.targets
+*
+*    Copyright 2010-2019 Intel Corporation. All Rights Reserved.
+*
+*    The source code, information and material ("Material") contained herein is owned by Intel
+*    Corporation or its suppliers or licensors, and title to such Material remains with Intel
+*    Corporation or its suppliers or licensors. The Material contains proprietary information
+*    of Intel or its suppliers and licensors. The Material is protected by worldwide copyright
+*    laws and treaty provisions. No part of the Material may be used, copied, reproduced,
+*    modified, published, uploaded, posted, transmitted, distributed or disclosed in any way
+*    without Intel's prior express written permission. No license under any patent, copyright
+*    or other intellectual property rights in the Material is granted to or conferred upon you,
+*    either expressly, by implication, inducement, estoppel or otherwise. Any license under 
+*    such intellectual property rights must be express and approved by Intel in writing.
+*
+*    *Third Party trademarks are the property of their respective owners.
+*
+*    Unless otherwise agreed by Intel in writing, you may not remove or alter this notice or any
+*    other notice embedded in Materials by Intel or Intel's suppliers or licensors in any way.
+*
+***********************************************************************************************
+--><!--
+***********************************************************************************************
+WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and have
+          created a backup copy.  Incorrect changes to this file will make it
+          impossible to load or build your projects from the command-line or the IDE.
+***********************************************************************************************
+-->
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- Properties settings -->
+  <ItemDefinitionGroup Condition="'$(UseIntelMKL)' != '' AND '$(UseIntelMKL)' != 'No' AND '$(PlatformToolset)' == 'v141'">
+    <ClCompile>
+      <PreprocessorDefinitions Condition="'$(UseILP64Interfaces)' == 'true'">
+        MKL_ILP64;%(PreprocessorDefinitions)
+      </PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <UsingTask TaskName="GetMPIPath" AssemblyFile="$(VCTargetsPath)Intel.Build.ICLTasks.v150.dll" Condition="'$(PlatformToolset)' == 'v141' AND '$(UseIntelMKL)' == 'Cluster' AND Exists('$(VCTargetsPath)Intel.Build.ICLTasks.v150.dll')"/>
+  <Target Name="SetVCMKLEnvironment" BeforeTargets="ClCompile;Link;Lib" Condition="'$(UseIntelMKL)' != '' AND '$(UseIntelMKL)' != 'No' AND '$(PlatformToolset)' == 'v141' AND '$(MKLProductDir)' != ''">
+    <PropertyGroup>
+      <MKLArguments>-libs</MKLArguments>
+      <MKLArguments>$(MKLArguments) -c ms_c</MKLArguments>
+      <_MPIPlatform>em64t</_MPIPlatform>
+      <MKLArguments>$(MKLArguments) -a intel64</MKLArguments>
+      <MKLArguments Condition="'$(UseILP64Interfaces)' == 'true'">$(MKLArguments) -i ilp64</MKLArguments>
+      <MKLArguments Condition="'@(ClCompile->AnyHaveMetadataValue('RuntimeLibrary', 'MultiThreadedDLL'))' == 'false' AND '@(ClCompile->AnyHaveMetadataValue('RuntimeLibrary', 'MultiThreadedDebugDLL'))' == 'false'">$(MKLArguments) -l static</MKLArguments>
+      <MKLArguments Condition="'$(UseIntelMKL)' == 'Sequential'">$(MKLArguments) -p no</MKLArguments>
+      <MKLArguments Condition="'$(UseIntelMKL)' == 'Cluster'">$(MKLArguments) --cluster_library</MKLArguments>
+      <MKLArguments Condition="'$(UseIntelMKL)' == 'Cluster' AND ('$(UseMpiLibrary)' == 'MPICH2')">$(MKLArguments) -m mpich2</MKLArguments>
+      <MKLArguments Condition="'$(UseIntelMKL)' == 'Cluster' AND ('$(UseMpiLibrary)' == 'MSMPI')">$(MKLArguments) -m msmpi</MKLArguments>
+      <MKLArguments Condition="'$(UseIntelMKL)' == 'Parallel' AND '$(UseIntelTBB)' == 'true' AND '%(ClCompile.OpenMPSupport)' != 'true' AND '%(ClCompile.EnableParallelCodeGeneration)' != 'true'">$(MKLArguments) -t tbb</MKLArguments>
+
+      <UseMpiLibrary Condition="'$(UseIntelMKL)' == 'Cluster' AND ('$(UseMpiLibrary)' == '')">INTELMPI</UseMpiLibrary>
+    </PropertyGroup>
+
+    <Exec ConsoleToMSBuild="true" EchoOff="true" StandardOutputImportance="low" Command="mkl_link_tool.exe $(MKLArguments) 2&gt; NUL" WorkingDirectory="$(MKLProductDir)\mkl\tools">
+      <Output TaskParameter="ConsoleOutput" ItemName="_MKLLibraries" />
+    </Exec>
+
+    <PropertyGroup>
+      <MKLLibraries>@(_MKLLibraries)</MKLLibraries>
+      <MKLLibraries>$(MKLLibraries.Replace('/Qopenmp','libiomp5md.lib'))</MKLLibraries>
+      <MKLLibraries>$(MKLLibraries.Split(' '))</MKLLibraries>
+    </PropertyGroup>
+    <Message Text="MKL Libraries: $(MKLLibraries)" Importance="low"/>
+    
+    <GetMPIPath MpiType="$(UseMpiLibrary)" Platform="$(_MPIPlatform)" Condition="'$(UseIntelMKL)' == 'Cluster'">
+      <Output TaskParameter="MpiRootPath" PropertyName="_MPIRootPath" />
+      <Output TaskParameter="MpiLibPath" PropertyName="_MPILibPath" />
+      <Output TaskParameter="MpiIncPath" PropertyName="_MPIIncPath" />
+    </GetMPIPath>
+    <Message Text="MPI Path: $(_MPIRootPath)" Condition="Exists($(_MPIRootPath))"/>
+    <Message Text="MPI Lib Path: $(_MPILibPath)" Condition="Exists($(_MPIRootPath))" Importance="low"/>
+    <Message Text="MPI Inc Path: $(_MPIIncPath)" Condition="Exists($(_MPIRootPath))" Importance="low"/>
+
+    <ItemGroup>
+       <ClCompile>
+         <AdditionalIncludeDirectories>$(_MPIIncPath);%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+       </ClCompile>
+    </ItemGroup>
+  </Target>
+  
+  <Target Name="SetLinkLibMKLEnvironment" BeforeTargets="Link;Lib" Condition="'$(UseIntelMKL)' != '' AND '$(UseIntelMKL)' != 'No'">
+    <ItemGroup>
+      <Link>
+        <AdditionalDependencies>$(MKLLibraries);%(Link.AdditionalDependencies)</AdditionalDependencies>
+        <AdditionalLibraryDirectories>$(_MPILibPath);%(Link.AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      </Link>
+      <Lib Condition="('@(ClCompile->AnyHaveMetadataValue('RuntimeLibrary', 'MultiThreadedDLL'))' == 'true' OR '@(ClCompile->AnyHaveMetadataValue('RuntimeLibrary', 'MultiThreadedDebugDLL'))' == 'true')">
+        <AdditionalDependencies>$(MKLLibraries);%(Lib.AdditionalDependencies)</AdditionalDependencies>
+        <AdditionalLibraryDirectories>$(_MPILibPath);%(Lib.AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      </Lib>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="CheckInstalledVCLibsMKL" BeforeTargets="ClCompile" Condition="'$(UseIntelMKL)' != '' AND '$(UseIntelMKL)' != 'No' AND '$(PlatformToolset)' == 'v141'">
+    <!-- Warning: MKL has limited stdcall support. For more information use the link: http://software.intel.com/sites/products/documentation/hpc/mkl/mkl_userguide_win/GUID-F38C7F49-D0A7-4B86-A6D1-264F525E593B.htm -->
+    <ICMessage Code="WRN002" Type="Warning" Condition="'@(ClCompile->AnyHaveMetadataValue('CallingConvention', 'StdCall'))' == 'true'" />
+
+    <!-- MKL cluster libraries are not installed. -->
+    <ICMessage Code="ERR009" Type="Error" Condition="'$(MKLCluster)'=='0' AND '$(UseIntelMKL)' == 'Cluster' AND (($(MKLMajorVersion) == 11 AND $(MKLMinorVersion) == 1) OR $(MKLMajorVersion) &gt; 11)"/>
+  </Target>
+   
+</Project>

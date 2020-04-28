@@ -1,0 +1,169 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+***********************************************************************************************
+*    general xml for llvm pane in properties window 
+***********************************************************************************************
+-->
+
+<!--
+***********************************************************************************************
+WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and have
+          created a backup copy.  Incorrect changes to this file will make it
+          impossible to load or build your projects from the command-line or the IDE.
+***********************************************************************************************
+-->
+
+<Rule
+      Name="LLVMGeneral"
+      DisplayName="LLVM"
+      PageTemplate="generic"
+      Description="LLVM"
+      xmlns="http://schemas.microsoft.com/build/2009/properties">
+	<Rule.Categories>
+		<Category Name="General" DisplayName="General" Description="General" />
+	</Rule.Categories>
+	<Rule.DataSource>
+		<DataSource Persistence="ProjectFile" Label="LLVM" HasConfigurationCondition="true" />
+	</Rule.DataSource>
+
+	<BoolProperty Name="UseClangCl" 
+                DisplayName="Use clang-cl" 
+                Description="Use clang-cl for compiling.  If this option is disabled, the Microsoft compiler (cl.exe) will be used instead." 
+                Category="General" 
+                Default="true">
+	</BoolProperty>
+	<!-- Default="$(LLVMInstallDir)bin\clang-cl.exe" -->
+	<StringProperty Name="ClangClExecutable"
+                  DisplayName="clang-cl Executable"
+                  Description="Specifies the path to either clang-cl.exe or clang++.exe. The latter is the default as it allows more options and is less restricted."
+                  Category="General"
+                  Default="$(LLVMInstallDir)bin\clang-cl.exe"
+                  Subtype="file">
+	</StringProperty>
+
+	<StringProperty Name="ClangClAdditionalOptions"
+                  DisplayName="Additional Compiler Options"
+                  Description="Additional options to pass to clang.  This is essentially the same as C/C++ > Command Line > Additional Options, except that it is safe to put options here that will be rejected by cl.exe in case you switch toolchains back and forth."
+                  Category="General">
+	</StringProperty>
+
+	<BoolProperty Name="UseLldLink"
+                DisplayName="Use lld-link"
+                Description="Use lld-link for linking.  If this option is disabled, the Microsoft linker (link.exe) will be used instead."
+                Category="General"
+                Default="true">
+	</BoolProperty>
+	<StringProperty Name="LldLinkExecutable"
+                  DisplayName="lld-link Executable"
+                  Description="Specifies the path to lld-link.exe."
+                  Category="General"
+                  Default="$(LLVMInstallDir)bin\lld-link.exe"
+                  Subtype="file">
+	</StringProperty>
+
+	<StringProperty Name="LldLinkAdditionalOptions"
+                  DisplayName="Additional Linker Options"
+                  Description="Additional options to pass to lld-link.  This is essentially the same as General > Linker > Command Line > Additional Options, except that it is safe to put options here that will be rejected by link.exe in case you switch toolchains back and forth."
+                  Category="General">
+	</StringProperty>
+
+	<BoolProperty Name="UseLlvmLib"
+                DisplayName="Use llvm-lib"
+                Description="Use llvm-lib for managing libraries.  If this option is disabled, the Microsoft librarian (lib.exe) will be used instead."
+                Category="General"
+                Default="true">
+	</BoolProperty>
+	<StringProperty Name="LlvmLibExecutable"
+                  DisplayName="llvm-lib Executable"
+                  Description="Specifies the path to llvm-lib.exe."
+                  Category="General"
+                  Default="$(LLVMInstallDir)bin\llvm-lib.exe"
+                  Subtype="file">
+	</StringProperty>
+
+	<StringProperty Name="LlvmLibAdditionalOptions"
+                  DisplayName="Additional Librarian Options"
+                  Description="Additional options to pass to llvm-lib.  This is essentially the same as General > Librarian > Command Line > Additional Options, except that it is safe to put options here that will be rejected by lib.exe in case you switch toolchains back and forth."
+                  Category="General">
+	</StringProperty>
+
+	<BoolProperty Name="GNUSwitching"
+                DisplayName="Use GNU switches"
+                Description="Use GNU switches for managing clang.  If this option is disabled, the Microsoft or Intel switches will be used instead."
+                Category="General"
+                Default="true">
+	</BoolProperty>
+
+	<BoolProperty Name="IntelCompatible"
+                DisplayName="Intel Compatibility"
+                Description="Use Intel compatible switches for managing clang.  If this option is disabled, clang will not be able to be used as a platform toolset of the Intel Compiler."
+                Category="General"
+                Default="false">
+	</BoolProperty>
+
+	<!--  begin  cuda    -->
+	<BoolProperty Name="UseCudaToolkit" 
+                DisplayName="Use cuda toolkit" 
+                Description="Use cuda toolkit compiling.  If this option is disabled, the cuda runtime will not be available." 
+                Category="General" 
+                Default="true">
+	</BoolProperty>
+	<StringProperty Name="CudaToolkitDir"
+                  DisplayName="Cuda Libraries"
+                  Description="Specifies the path to the cuda toolkit."
+                  Category="General"
+                  Default="$(CudaToolkitDir)"
+                  Subtype="folder">
+	</StringProperty>
+	<StringProperty Name="CudaToolkitVersion"
+                  DisplayName="Cuda Version"
+                  Description="Specifies the version of the cuda toolkit."
+                  Category="General"
+                  Default="10.1">
+	</StringProperty>
+	<!--  end  cuda    -->
+
+
+	<EnumProperty Name="PlatformTriplet" DisplayName="Platform Triplet" Description="Target architecture override setting." Category="General" Default="Windows" F1Keyword="">
+		<EnumProperty.DataSource>
+			<DataSource Persistence="ProjectFile" Label="TargetArchLabel" PersistedName="ToolsetISenseIdentifierType"
+		HasConfigurationCondition="False"  />
+		</EnumProperty.DataSource>
+		<EnumValue Name="Default" Switch="" DisplayName="Default" Description=""/>
+
+		<EnumValue Name="Windows" Switch="--target=amd64-pc-windows-msvc" DisplayName="Windows" Description="Windows Platform Enviornment : _WIN64."/>
+
+		<EnumValue Name="Clang.Windows" Switch="--target=x86_64-pc-windows-msvc" DisplayName="Clang" Description="Clang on Windows Platform Enviornment : x86_64."/>
+
+		<EnumValue Name="GCC" Switch="--target=x86_64-pc-windows-gnu" DisplayName="GCC" Description="Clang on Windows Platform Enviornment : x86_64."/>
+
+		<EnumValue Name="Linux" Switch="--target=x86_64-linux-gnu" DisplayName="Linux" Description="Linux on Windows Platform Enviornment : x86_64."/>
+
+		<EnumValue Name="iOS" Switch="--target=x86_64-darwin-gnu" DisplayName="iOS" Description="iOS on Windows Platform Enviornment : x86_64."/>
+
+		<EnumValue Name="Android" Switch="--target=x86_64-android-gnu" DisplayName="Android" Description="Android on Windows Platform Enviornment : x86_64."/>
+
+	</EnumProperty>
+
+	<EnumProperty Name="ToolsetISenseIdentifierType" DisplayName="Toolset ISense Identifier" 
+	Description="Specifies the toolset identifier that determines the Intellisense platform diagnostics." 
+  Category="General" Default="Windows"  F1Keyword="" Visible="false" >
+
+		<EnumValue Name="Default" Switch="" DisplayName="Default" Description=""/>
+
+		<EnumValue Name="Windows" Switch="windows-msvc-x64" DisplayName="Windows" Description="Windows Platform Enviornment : _WIN64."/>
+
+		<EnumValue Name="Clang.Windows" Switch="clang-windows-x64" DisplayName="Clang" Description="Clang on Windows Platform Enviornment : x86_64."/>
+
+		<EnumValue Name="GCC" Switch="windows-gcc-x64" DisplayName="GCC" Description="GCC on Windows Platform Enviornment : x86_64."/>
+
+		<EnumValue Name="Linux" Switch="linux-gcc-x64" DisplayName="Linux" Description="Linux on Windows Platform Enviornment : x86_64."/>
+
+		<EnumValue Name="iOS" Switch="ios-clang-x64" DisplayName="iOS" Description="iOS on Windows Platform Enviornment : x86_64."/>
+
+		<EnumValue Name="Android" Switch="android-clang-x64" DisplayName="Android" Description="Android on Windows Platform Enviornment : x86_64."/>
+
+	</EnumProperty> 
+
+
+</Rule>

@@ -1,0 +1,69 @@
+﻿<!--
+***********************************************************************************************
+*    Intel.Libs.v141.props
+*
+*    Copyright 2010-2019 Intel Corporation. All Rights Reserved.
+*
+*    The source code, information and material ("Material") contained herein is owned by Intel
+*    Corporation or its suppliers or licensors, and title to such Material remains with Intel
+*    Corporation or its suppliers or licensors. The Material contains proprietary information
+*    of Intel or its suppliers and licensors. The Material is protected by worldwide copyright
+*    laws and treaty provisions. No part of the Material may be used, copied, reproduced,
+*    modified, published, uploaded, posted, transmitted, distributed or disclosed in any way
+*    without Intel's prior express written permission. No license under any patent, copyright
+*    or other intellectual property rights in the Material is granted to or conferred upon you,
+*    either expressly, by implication, inducement, estoppel or otherwise. Any license under 
+*    such intellectual property rights must be express and approved by Intel in writing.
+*
+*    *Third Party trademarks are the property of their respective owners.
+*
+*    Unless otherwise agreed by Intel in writing, you may not remove or alter this notice or any
+*    other notice embedded in Materials by Intel or Intel's suppliers or licensors in any way.
+*
+***********************************************************************************************
+--><!--
+***********************************************************************************************
+WARNING:  DO NOT MODIFY this file unless you are knowledgeable about MSBuild and have
+          created a backup copy.  Incorrect changes to this file will make it
+          impossible to load or build your projects from the command-line or the IDE.
+***********************************************************************************************
+-->
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup Condition="'$(PlatformToolset)' == 'v141'">
+    <ICPlatform>EM64T</ICPlatform>
+    <IntelPlatform>intel64</IntelPlatform>
+    <ICCompilerPlatform Condition="'$(ICCompilerPlatform)' == ''">$(ICPlatform)</ICCompilerPlatform>
+
+    <!-- Add new Intel platform toolset section here -->
+
+    <!-- Intel C++ Compiler 19.0 -->
+    <SuiteVer Condition="'$(ICInstallDir)'==''">19.0</SuiteVer>
+    <_SubKey Condition="'$(ICInstallDir)'==''">$([MSBuild]::GetRegistryValue('HKEY_CURRENT_USER\Software\Intel\Suites\SelectedTools\VS15\$(SuiteVer)\C++\$(ICCompilerPlatform)', 'SubKey'))</_SubKey>
+    <ICInstallDir Condition="'$(ICInstallDir)'==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(SuiteVer)\$(_SubKey)\C++', 'ProductDir', null, RegistryView.Registry32))</ICInstallDir>
+    <_SubKey Condition="'$(ICInstallDir)' ==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(SuiteVer)\Defaults\C++\$(ICCompilerPlatform)', 'SubKey', null, RegistryView.Registry32))</_SubKey>
+    <ICInstallDir Condition="'$(ICInstallDir)' ==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(SuiteVer)\$(_SubKey)\C++', 'LatestDir', null, RegistryView.Registry32))</ICInstallDir>
+	
+	<!-- Intel C++ Compiler 18.0 -->
+    <SuiteVer Condition="'$(ICInstallDir)'==''">18.0</SuiteVer>
+    <_SubKey Condition="'$(ICInstallDir)'==''">$([MSBuild]::GetRegistryValue('HKEY_CURRENT_USER\Software\Intel\Suites\SelectedTools\VS15\$(SuiteVer)\C++\$(ICCompilerPlatform)', 'SubKey'))</_SubKey>
+    <ICInstallDir Condition="'$(ICInstallDir)'==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(SuiteVer)\$(_SubKey)\C++', 'ProductDir', null, RegistryView.Registry32))</ICInstallDir>
+    <_SubKey Condition="'$(ICInstallDir)' ==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(SuiteVer)\Defaults\C++\$(ICCompilerPlatform)', 'SubKey', null, RegistryView.Registry32))</_SubKey>
+    <ICInstallDir Condition="'$(ICInstallDir)' ==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(SuiteVer)\$(_SubKey)\C++', 'LatestDir', null, RegistryView.Registry32))</ICInstallDir>
+
+    <!-- Intel C++ Compiler 17.0 -->
+    <SuiteVer Condition="'$(ICInstallDir)'==''">17.0</SuiteVer>
+    <_SubKey Condition="'$(ICInstallDir)'==''">$([MSBuild]::GetRegistryValue('HKEY_CURRENT_USER\Software\Intel\Suites\SelectedTools\VS15\$(SuiteVer)\C++\$(ICCompilerPlatform)', 'SubKey'))</_SubKey>
+    <ICInstallDir Condition="'$(ICInstallDir)'==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(SuiteVer)\$(_SubKey)\C++', 'ProductDir', null, RegistryView.Registry32))</ICInstallDir>
+    <_SubKey Condition="'$(ICInstallDir)' ==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(SuiteVer)\Defaults\C++\$(ICCompilerPlatform)', 'SubKey', null, RegistryView.Registry32))</_SubKey>
+    <ICInstallDir Condition="'$(ICInstallDir)' ==''">$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Intel\Suites\$(SuiteVer)\$(_SubKey)\C++', 'LatestDir', null, RegistryView.Registry32))</ICInstallDir>
+
+    <SuiteVer Condition="'$(ICInstallDir)'==''">[Intel Compiler is not installed]</SuiteVer>
+
+    <!-- Calculating Redist Paths macro for VC++ -->
+    <CompilerPath Condition="'$(ICInstallDir)' != ''">$(ICInstallDir)redist\$(IntelPlatform)\compiler</CompilerPath>
+    <VCRedistPaths Condition="'$(VCRedistPaths)' == ''">$(CompilerPath);$(IPPPath)$(MKLPath)$(DAALPath)$(TBBPath)</VCRedistPaths>
+  </PropertyGroup>
+
+</Project>
